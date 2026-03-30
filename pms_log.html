@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PMS Log — GraceHealth</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">GraceHealth<span>Women's Health Platform</span></div>
+  <nav>
+    <a href="/dashboard" class="nav-link">← Dashboard</a>
+    <a href="/logout" class="nav-logout">Logout</a>
+  </nav>
+</header>
+
+<div class="form-page-wrap">
+  <div class="form-card">
+
+    <div class="form-card-header">
+      <div style="font-size:44px; margin-bottom:10px;">🌙</div>
+      <h2>PMS Symptom Log</h2>
+      <p>Track how you feel in the days before your period starts.
+         This helps identify your PMS patterns over time.</p>
+    </div>
+
+    <div class="pms-date-badge">
+      📅 Logging for today — <strong id="todayLabel"></strong>
+    </div>
+
+    <form method="POST">
+
+      <!-- Mood -->
+      <div class="pms-question">
+        <div class="pms-q-label">😊 How is your mood today?</div>
+        <div class="pms-options">
+          <label class="pms-opt">
+            <input type="radio" name="mood" value="0" required>
+            <span class="pms-chip">😊 Good</span>
+          </label>
+          <label class="pms-opt">
+            <input type="radio" name="mood" value="1">
+            <span class="pms-chip">😐 Okay</span>
+          </label>
+          <label class="pms-opt">
+            <input type="radio" name="mood" value="2">
+            <span class="pms-chip">😔 Low</span>
+          </label>
+          <label class="pms-opt">
+            <input type="radio" name="mood" value="3">
+            <span class="pms-chip">😤 Irritable</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Bloating -->
+      <div class="pms-question">
+        <div class="pms-q-label">🫧 Any bloating or stomach discomfort?</div>
+        <div class="pms-options">
+          <label class="pms-opt">
+            <input type="radio" name="bloating" value="0" required>
+            <span class="pms-chip">✅ None</span>
+          </label>
+          <label class="pms-opt">
+            <input type="radio" name="bloating" value="1">
+            <span class="pms-chip">🟡 Mild</span>
+          </label>
+          <label class="pms-opt">
+            <input type="radio" name="bloating" value="2">
+            <span class="pms-chip">🟠 Moderate</span>
+          </label>
+          <label class="pms-opt">
+            <input type="radio" name="bloating" value="3">
+            <span class="pms-chip">🔴 Severe</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Headache -->
+      <div class="pms-question">
+        <div class="pms-q-label">🤕 Any headache or migraine?</div>
+        <div class="pms-options">
+          <label class="pms-opt">
+            <input type="radio" name="headache" value="0" required>
+            <span class="pms-chip">✅ None</span>
+          </label>
+          <label class="pms-opt">
+            <input type="radio" name="headache" value="1">
+            <span class="pms-chip">🟡 Mild</span>
+          </label>
+          <label class="pms-opt">
+            <input type="radio" name="headache" value="2">
+            <span class="pms-chip">🟠 Moderate</span>
+          </label>
+          <label class="pms-opt">
+            <input type="radio" name="headache" value="3">
+            <span class="pms-chip">🔴 Severe</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="form-group" style="margin-top:8px;">
+        <label style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;
+                      letter-spacing:.5px;margin-bottom:6px;display:block;">
+          📝 Personal Notes <span style="font-weight:400;color:#bbb;">(optional)</span>
+        </label>
+        <textarea name="notes" maxlength="200" rows="2"
+                  placeholder="How are you feeling overall today?"
+                  style="width:100%;box-sizing:border-box;padding:12px 14px;
+                         border:1.5px solid #f0f0f0;border-radius:12px;font-size:14px;
+                         color:#2d2d2d;outline:none;resize:vertical;
+                         font-family:'DM Sans',sans-serif;transition:border .2s;"
+                  onfocus="this.style.borderColor='#9c27b0'"
+                  onblur="this.style.borderColor='#f0f0f0'"></textarea>
+      </div>
+
+      <button type="submit" id="submitBtn" disabled
+              class="btn-pms-submit" style="margin-top:12px;">
+        🌙 Save PMS Log
+      </button>
+      <a href="/dashboard" style="display:block;text-align:center;margin-top:12px;
+         font-size:13px;color:#aaa;text-decoration:none;">Cancel</a>
+
+    </form>
+  </div>
+</div>
+
+<style>
+  .form-page-wrap { max-width:560px; margin:40px auto 60px; padding:0 20px; }
+  .form-card { background:#fff; border-radius:20px; padding:36px 40px;
+               box-shadow:0 4px 30px rgba(106,27,154,.08); }
+  .form-card-header { text-align:center; margin-bottom:24px; }
+  .form-card-header h2 { font-family:'Playfair Display',serif; font-size:26px;
+                          color:#6a1b9a; margin-bottom:6px; }
+  .form-card-header p  { font-size:13px; color:#aaa; line-height:1.6; }
+  .pms-date-badge { background:#f3e5f5; border-radius:10px; padding:10px 14px;
+                    font-size:13px; color:#6a1b9a; margin-bottom:22px; text-align:center; }
+  .pms-question { margin-bottom:22px; }
+  .pms-q-label  { font-size:14px; font-weight:600; color:#2d2d2d; margin-bottom:12px; }
+  .pms-options  { display:flex; gap:8px; flex-wrap:wrap; }
+  .pms-opt      { cursor:pointer; }
+  .pms-opt input { display:none; }
+  .pms-chip { display:inline-block; padding:8px 16px; border-radius:50px;
+              background:#f5f5f5; color:#666; font-size:13px; font-weight:500;
+              border:1.5px solid transparent; transition:all .2s; cursor:pointer; }
+  .pms-opt input:checked + .pms-chip {
+    background:#f3e5f5; color:#6a1b9a;
+    border-color:#ce93d8; font-weight:600;
+  }
+  .pms-chip:hover { background:#ede7f6; color:#6a1b9a; }
+  .btn-pms-submit { width:100%; background:linear-gradient(135deg,#6a1b9a,#9c27b0);
+                    color:#fff; border:none; padding:14px; border-radius:50px;
+                    font-size:15px; font-weight:600; cursor:pointer;
+                    font-family:'DM Sans',sans-serif; transition:all .3s;
+                    opacity:.5; pointer-events:none; }
+  .btn-pms-submit:not([disabled]) { opacity:1; pointer-events:auto; }
+  .btn-pms-submit:not([disabled]):hover { opacity:.85; }
+  @media(max-width:520px){
+    .form-card { padding:24px 18px; }
+    .pms-chip { padding:7px 12px; font-size:12px; }
+  }
+</style>
+
+<script>
+  // Set today label
+  var d = new Date();
+  var months = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+  document.getElementById('todayLabel').textContent =
+    months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+
+  // Enable submit only when all 3 questions answered
+  var radios = document.querySelectorAll('input[type="radio"]');
+  radios.forEach(function(r) { r.addEventListener('change', checkReady); });
+
+  function checkReady() {
+    var mood     = document.querySelector('input[name="mood"]:checked');
+    var bloating = document.querySelector('input[name="bloating"]:checked');
+    var headache = document.querySelector('input[name="headache"]:checked');
+    var btn = document.getElementById('submitBtn');
+    if(mood && bloating && headache) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+    } else {
+      btn.disabled = true;
+      btn.style.opacity = '.5';
+      btn.style.pointerEvents = 'none';
+    }
+  }
+</script>
+
+</body>
+</html>

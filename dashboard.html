@@ -1,0 +1,2591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — GraceHealth</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════════ -->
+<header class="header">
+  <div class="logo">GraceHealth<span>Women's Health Platform</span></div>
+  <nav>
+    <button onclick="toggleDarkMode()" id="darkBtn"
+            style="background:none;border:1.5px solid rgba(255,255,255,.4);color:#fff;
+                   padding:6px 14px;border-radius:50px;cursor:pointer;font-size:13px;
+                   font-family:'DM Sans',sans-serif;font-weight:600;margin-right:8px;">
+      🌙 Dark
+    </button>
+    <a href="/edit_profile" class="nav-link">⚙ Profile</a>
+    <a href="/logout" class="nav-logout">Logout</a>
+  </nav>
+</header>
+
+
+<!-- ══════════════════════════════════════════════
+     SMART NOTIFICATIONS
+══════════════════════════════════════════════ -->
+{% if notifications %}
+<div class="notifications-wrap">
+  {% for n in notifications %}
+  <div class="notif-banner notif-{{ n.type }}">
+    <span class="notif-icon">{{ n.icon }}</span>
+    <span class="notif-msg">{{ n.msg }}</span>
+    <button class="notif-close" onclick="this.parentElement.remove()">✕</button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if missed_alert %}
+<div class="notifications-wrap">
+  <div class="notif-banner notif-warning" style="border-color:#f44336;background:#fdecea;color:#b71c1c;">
+    <span class="notif-icon">🚨</span>
+    <span class="notif-msg">Your period is <strong>{{ missed_alert }} days late</strong>. If this is unexpected, consider a pregnancy test or consult Dr. Ankita Singh.</span>
+    <button class="notif-close" onclick="this.parentElement.remove()">✕</button>
+  </div>
+</div>
+{% endif %}
+
+{% if user and user['age'] < 14 %}
+<div class="notifications-wrap">
+  <div class="notif-banner notif-info" style="background:#e8f5e9;border-color:#a5d6a7;color:#1b5e20;">
+    <span class="notif-icon">🌸</span>
+    <span class="notif-msg"><strong>Welcome!</strong> Your first periods may be irregular — that's completely normal. Track each cycle and show your results to a trusted adult or doctor.</span>
+    <button class="notif-close" onclick="this.parentElement.remove()">✕</button>
+  </div>
+</div>
+{% elif user and user['age'] >= 45 and user['age'] <= 55 %}
+<div class="notifications-wrap">
+  <div class="notif-banner notif-tip" style="background:#f3e5f5;border-color:#ce93d8;color:#4a148c;">
+    <span class="notif-icon">🌷</span>
+    <span class="notif-msg"><strong>Perimenopause Awareness:</strong> Cycles may become irregular in your 40s. Track any changes in flow, mood, or cycle length — these are important signals.</span>
+    <button class="notif-close" onclick="this.parentElement.remove()">✕</button>
+  </div>
+</div>
+{% elif user and user['age'] > 55 %}
+<div class="notifications-wrap">
+  <div class="notif-banner notif-tip" style="background:#e3f2fd;border-color:#90caf9;color:#0d47a1;">
+    <span class="notif-icon">💙</span>
+    <span class="notif-msg"><strong>Senior Health Mode:</strong> Focus on BMR, heart rate, oxygen levels, and temperature. Use this platform to track vitals and doctor visits.</span>
+    <button class="notif-close" onclick="this.parentElement.remove()">✕</button>
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ══════════════════════════════════════════════
+     HERO
+══════════════════════════════════════════════ -->
+<section class="awareness">
+  <div class="awareness-badge">Women's Health Awareness</div>
+  <h1>Your Health, <span>Your Power</span></h1>
+  <p>GraceHealth combines real-time IoT monitoring with women's wellness knowledge
+     to help you understand and take control of your body every single day.</p>
+  <div class="illustrations">
+    <img src="https://cdn-icons-png.flaticon.com/512/6997/6997662.png" alt="Girl">
+    <img src="https://cdn-icons-png.flaticon.com/512/6997/6997665.png" alt="Teen girl">
+    <img src="https://cdn-icons-png.flaticon.com/512/6997/6997669.png" alt="Young woman">
+    <img src="https://cdn-icons-png.flaticon.com/512/6997/6997673.png" alt="Senior woman">
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════
+     SUMMARY STAT STRIP
+══════════════════════════════════════════════ -->
+<div class="stat-strip">
+  <div class="stat-strip-item">
+    <div class="stat-strip-icon" style="background:#fce4ec;">🔥</div>
+    <div>
+      <div class="stat-strip-val" id="bmrStrip">—</div>
+      <div class="stat-strip-label">BMR kcal/day</div>
+    </div>
+  </div>
+  <div class="stat-strip-item">
+    <div class="stat-strip-icon" style="background:#e8f5e9;">📅</div>
+    <div>
+      <div class="stat-strip-val">{{ cycle_history|length }}</div>
+      <div class="stat-strip-label">Cycles Tracked</div>
+    </div>
+  </div>
+  <div class="stat-strip-item">
+    <div class="stat-strip-icon" style="background:#fff3e0;">📊</div>
+    <div>
+      <div class="stat-strip-val">
+        {% if assessment %}{{ assessment['score'] }}/30{% else %}—{% endif %}
+      </div>
+      <div class="stat-strip-label">Assessment Score</div>
+    </div>
+  </div>
+  <div class="stat-strip-item">
+    <div class="stat-strip-icon" style="background:#f3e5f5;">🌸</div>
+    <div>
+      <div class="stat-strip-val">
+        {% if cycle_intel %}{{ cycle_intel.avg }} days{% else %}—{% endif %}
+      </div>
+      <div class="stat-strip-label">Avg Cycle Length</div>
+    </div>
+  </div>
+  <div class="stat-strip-item">
+    <div class="stat-strip-icon" style="background:#e3f2fd;">🏥</div>
+    <div>
+      <div class="stat-strip-val">{{ doctor_visits|length }}</div>
+      <div class="stat-strip-label">Doctor Visits</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     DASHBOARD GRID
+══════════════════════════════════════════════ -->
+<div class="dashboard-grid">
+
+
+  <!-- ── Profile Card ──────────────────────────── -->
+  <div class="dash-card">
+    <div class="dash-card-title">
+      <div class="card-icon">👤</div>My Profile
+      <a href="/edit_profile" style="margin-left:auto; font-size:12px; color:#c2185b;
+         font-weight:600; text-decoration:none; font-family:'DM Sans',sans-serif;">✏ Edit</a>
+    </div>
+    <div class="profile-avatar">
+      <img src="{{ avatar_url }}" alt="Profile Avatar"
+           style="width:72px;height:72px;object-fit:contain;"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+      <span style="display:none;font-size:48px;">👩</span>
+    </div>
+    <div class="profile-row"><span class="profile-label">Name</span>
+      <span class="profile-value">{{ user['name'] }}</span></div>
+    <div class="profile-row"><span class="profile-label">Age</span>
+      <span class="profile-value">{{ user['age'] }} years</span></div>
+    <div class="profile-row"><span class="profile-label">Weight</span>
+      <span class="profile-value">{{ user['weight'] }} kg</span></div>
+    <div class="profile-row"><span class="profile-label">Height</span>
+      <span class="profile-value">{{ user['height'] }} cm</span></div>
+    <div class="profile-row"><span class="profile-label">Email</span>
+      <span class="profile-value" style="font-size:12px;word-break:break-all;">{{ user['email'] }}</span></div>
+    {% if phone %}
+    <div class="profile-row"><span class="profile-label">📱 Phone</span>
+      <span class="profile-value">{{ phone }}</span></div>
+    {% endif %}
+
+    <!-- Streak + Health Score badges -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px;">
+      <div style="background:linear-gradient(135deg,#fff3e0,#ffe0b2); border-radius:12px;
+                  padding:10px; text-align:center; border:1px solid #ffcc80;">
+        <div style="font-size:18px;">🔥</div>
+        <div style="font-size:20px; font-weight:700; color:#e65100;">{{ streak or 0 }}</div>
+        <div style="font-size:10px; color:#bf360c; font-weight:600;">Day Streak</div>
+      </div>
+      {% if cycle_health is not none %}
+      <div style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9); border-radius:12px;
+                  padding:10px; text-align:center; border:1px solid #a5d6a7;">
+        <div style="font-size:18px;">💚</div>
+        <div style="font-size:20px; font-weight:700; color:#2e7d32;">{{ cycle_health }}</div>
+        <div style="font-size:10px; color:#1b5e20; font-weight:600;">Health Score</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Phase badge on profile -->
+    {% if current_phase %}
+    <div style="margin-top:16px; background:{{ current_phase.color }}18;
+                border:1.5px solid {{ current_phase.color }}44;
+                border-radius:12px; padding:12px 14px;">
+      <div style="font-size:11px; font-weight:700; color:{{ current_phase.color }};
+                  text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">
+        {{ current_phase.icon }} Current Phase
+      </div>
+      <div style="font-size:15px; font-weight:700; color:{{ current_phase.color }};">
+        {{ current_phase.phase }}
+      </div>
+      <div style="font-size:11px; color:#888; margin-top:3px;">
+        Energy: {{ current_phase.energy }}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+
+  <!-- ── Health Overview ───────────────────────── -->
+  <div class="dash-card">
+    <div class="dash-card-title">
+      <div class="card-icon">📈</div>Health Overview
+    </div>
+
+    {% if arduino_status %}
+    <div class="arduino-badge connected"><span class="arduino-dot"></span> Arduino Connected</div>
+    {% else %}
+    <div class="arduino-badge disconnected"><span class="arduino-dot"></span> Arduino Not Connected</div>
+    {% endif %}
+
+    <div class="quick-stat-row">
+      <div class="quick-stat">
+        <div class="quick-stat-label">BMR Formula</div>
+        <div class="quick-stat-value" style="font-size:11px;color:#666;line-height:1.5;">Mifflin-St&nbsp;Jeor</div>
+      </div>
+      <div class="quick-stat">
+        <div class="quick-stat-label">Normal Range</div>
+        <div class="quick-stat-value" style="font-size:13px;">1200–2500</div>
+      </div>
+    </div>
+
+    {% if assessment %}
+    <div class="formula-box" style="margin-top:14px;">
+      <div class="formula-title">Period Health Score</div>
+      <div class="formula-text">{{ assessment['score'] }} / 30</div>
+      <!-- Visual score band -->
+      <div class="score-band-wrap">
+        <div class="score-band">
+          <div class="score-band-fill" style="width:{{ (assessment['score']/30*100)|int }}%;
+               background:{% if assessment['score'] <= 8 %}#43a047
+               {% elif assessment['score'] <= 16 %}#fdd835
+               {% elif assessment['score'] <= 24 %}#fb8c00
+               {% else %}#e53935{% endif %};"></div>
+        </div>
+        <div class="score-band-labels">
+          <span style="color:#43a047;">Normal</span>
+          <span style="color:#fdd835;">Moderate</span>
+          <span style="color:#fb8c00;">Severe</span>
+          <span style="color:#e53935;">Critical</span>
+        </div>
+      </div>
+      <div class="formula-sub">{{ assessment['analysis'] }}</div>
+    </div>
+    {% endif %}
+
+    {% if progress %}
+    <div style="margin-top:12px; padding:12px 14px; border-radius:12px;
+         background:{% if progress.trend == 'improving' %}#e8f5e9
+                    {% elif progress.trend == 'worsening' %}#fff3e0
+                    {% else %}#f5f5f5{% endif %};">
+      <div style="font-size:11px; font-weight:700; color:#888; margin-bottom:3px;">PROGRESS TREND</div>
+      <div style="font-size:13px; color:#444;">{{ progress.message }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+
+  <!-- ── Period Phase Card (full width) ─────────── -->
+  {% if current_phase %}
+  <div style="grid-column:span 2;">
+    <div class="phase-card" style="border-left:5px solid {{ current_phase.color }};">
+      <div class="phase-left">
+        <div style="font-size:36px; margin-bottom:6px;">{{ current_phase.icon }}</div>
+        <div style="font-size:11px; font-weight:700; color:{{ current_phase.color }};
+                    text-transform:uppercase; letter-spacing:1px;">Current Phase</div>
+        <div style="font-family:'Playfair Display',serif; font-size:22px;
+                    font-weight:700; color:{{ current_phase.color }}; margin:4px 0;">
+          {{ current_phase.phase }}
+        </div>
+        <div style="font-size:12px; color:#aaa;">Day {{ current_phase.day }} &nbsp;·&nbsp; Energy: {{ current_phase.energy }}</div>
+      </div>
+      <div class="phase-right">
+        <div style="font-size:13px; color:#444; line-height:1.7;">{{ current_phase.tip }}</div>
+      </div>
+      <div class="phase-phases">
+        {% for ph, ico, col in [('Menstruation','🔴','#c2185b'),('Follicular','🌱','#f57f17'),('Ovulation','✨','#2e7d32'),('Luteal','🌙','#6a1b9a')] %}
+        <div class="phase-step {% if current_phase.phase == ph %}active{% endif %}"
+             style="--ph-color:{{ col }};">
+          <span>{{ ico }}</span>
+          <span style="font-size:10px;">{{ ph }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+
+  <!-- ── Reminder Banner ───────────────────────── -->
+  {% if active_cycle and not already_logged %}
+  <div class="reminder-banner">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <span style="font-size:24px;">⚠️</span>
+      <div>
+        <div style="font-weight:600; color:#e65100; font-size:15px;">Symptom Log Reminder</div>
+        <div style="font-size:13px; color:#888; margin-top:2px;">
+          You haven't logged your symptoms today. It only takes a minute!
+        </div>
+      </div>
+    </div>
+    <a href="/daily_log" class="reminder-btn">Log Now →</a>
+  </div>
+  {% endif %}
+
+  <!-- ── Pattern Warning ───────────────────────── -->
+  {% if pattern_warning %}
+  <div class="pattern-warning">
+    <span style="font-size:22px;">🔬</span>
+    <div style="font-size:14px; color:#880e4f;">{{ pattern_warning }}</div>
+  </div>
+  {% endif %}
+
+
+  <!-- ── Period Tracker (full width) ───────────── -->
+  <div class="dash-card" style="grid-column:span 2;">
+    <div class="dash-card-title">
+      <div class="card-icon">🔴</div>Period Tracker
+      {% if not active_cycle %}
+      <a href="/pms_log" style="margin-left:auto; font-size:12px; color:#6a1b9a;
+         font-weight:600; text-decoration:none; font-family:'DM Sans',sans-serif;
+         background:#f3e5f5; padding:5px 12px; border-radius:50px;">
+        🌙 Log PMS Symptoms
+      </a>
+      {% endif %}
+    </div>
+
+    <div class="period-tracker-grid">
+
+      <!-- Controls -->
+      <div>
+        {% if active_cycle %}
+        <div class="active-period-badge">
+          <div style="font-size:11px; opacity:.75; margin-bottom:4px;">PERIOD ACTIVE</div>
+          <div style="font-family:'Playfair Display',serif; font-size:32px; font-weight:700; line-height:1;">
+            Day {{ cycle_day }}
+          </div>
+          <div style="font-size:12px; opacity:.7; margin-top:4px;">Started {{ active_cycle['start_date'] }}</div>
+        </div>
+
+        {% if today_log %}
+        <div class="today-log-box">
+          <div style="font-size:12px; font-weight:700; color:#2e7d32; margin-bottom:4px;">TODAY'S LOG ✅</div>
+          <div style="font-size:13px; color:#444;">Score: <strong>{{ today_log['score'] }}</strong> — {{ today_log['analysis'] }}</div>
+          <div style="font-size:12px; color:#888; margin-top:4px;">{{ today_log['tip'] }}</div>
+        </div>
+        {% else %}
+        <a href="/daily_log" class="btn-log-symptoms">📝 Log Today's Symptoms</a>
+        {% endif %}
+
+        <button onclick="endPeriod()" class="btn-period-end">✓ My Period Has Ended</button>
+
+        {% else %}
+        <div class="no-period-box">
+          <div style="font-size:40px; margin-bottom:10px;">⚪</div>
+          <div style="font-size:14px; color:#888; font-weight:500;">No active period</div>
+          {% if next_period %}
+          <div style="font-size:13px; color:#c2185b; margin-top:8px; font-weight:600;">
+            Next expected: {{ next_period }}
+          </div>
+          {% endif %}
+        </div>
+        <button onclick="startPeriod()" class="btn-period-start">🔴 My Period Started Today</button>
+        {% endif %}
+
+        <div id="periodMsg" style="margin-top:10px; font-size:13px; text-align:center; min-height:20px;"></div>
+      </div>
+
+      <!-- Prediction + Assessment -->
+      <div>
+        {% if next_period %}
+        <div class="prediction-card">
+          <div style="font-size:11px; font-weight:700; color:#c2185b; letter-spacing:1px;
+                      text-transform:uppercase; margin-bottom:8px;">🌡️ Next Period Prediction</div>
+          <div style="font-family:'Playfair Display',serif; font-size:20px;
+                      color:#880e4f; font-weight:700; margin-bottom:4px;">{{ next_period }}</div>
+          <div style="font-size:12px; color:#aaa;">Avg cycle: {{ avg_cycle_len }} days</div>
+        </div>
+        {% else %}
+        <div class="prediction-empty">
+          <div style="font-size:28px; margin-bottom:8px;">📅</div>
+          <div style="font-size:13px; color:#888;">Predictions available after 2 completed cycles</div>
+        </div>
+        {% endif %}
+
+        {% if assessment %}
+        <div style="margin-top:12px; background:#fff0f6; border-radius:12px; padding:14px 16px;">
+          <div style="font-size:11px; font-weight:700; color:#c2185b; letter-spacing:1px;
+                      text-transform:uppercase; margin-bottom:6px;">🌸 Health Baseline</div>
+          <div style="font-size:13px; color:#444; line-height:1.6;">{{ assessment['analysis'] }}</div>
+        </div>
+        {% endif %}
+
+        <!-- PMS recent logs -->
+        {% if pms_logs %}
+        <div style="margin-top:12px; background:#f3e5f5; border-radius:12px; padding:14px 16px;">
+          <div style="font-size:11px; font-weight:700; color:#6a1b9a; letter-spacing:1px;
+                      text-transform:uppercase; margin-bottom:8px;">🌙 Recent PMS Logs</div>
+          {% for p in pms_logs[:2] %}
+          <div style="font-size:12px; color:#444; margin-bottom:4px; padding-bottom:4px;
+                      border-bottom:1px solid #e1bee7;">
+            <strong>{{ p['date'] }}</strong> — Mood: {{ p['mood'] }}/3, Bloating: {{ p['bloating'] }}/3
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Calendar -->
+      <div>
+        <div style="font-size:11px; font-weight:700; color:#c2185b; letter-spacing:1px;
+                    text-transform:uppercase; margin-bottom:10px;">📅 Period Calendar</div>
+        <div id="calendar" style="background:#fff; border-radius:12px;
+             border:1.5px solid #f8bbd0; padding:12px;"></div>
+        <div style="margin-top:8px; display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:#666;">
+          <span style="display:flex;align-items:center;gap:4px;">
+            <span style="width:9px;height:9px;border-radius:50%;background:#c2185b;display:inline-block;"></span>Period
+          </span>
+          <span style="display:flex;align-items:center;gap:4px;">
+            <span style="width:9px;height:9px;border-radius:50%;background:#f48fb1;display:inline-block;"></span>Logged
+          </span>
+          <span style="display:flex;align-items:center;gap:4px;">
+            <span style="width:9px;height:9px;border-radius:2px;border:2px solid #c2185b;display:inline-block;"></span>Today
+          </span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ── Cycle Length Intelligence ─────────────── -->
+  {% if cycle_intel %}
+  <div class="dash-card">
+    <div class="dash-card-title"><div class="card-icon">🔬</div>Cycle Intelligence</div>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div class="intel-row">
+        <span class="intel-label">Average Cycle</span>
+        <span class="intel-val">{{ cycle_intel.avg }} days</span>
+      </div>
+      <div class="intel-row">
+        <span class="intel-label">Shortest</span>
+        <span class="intel-val">{{ cycle_intel.shortest }} days</span>
+      </div>
+      <div class="intel-row">
+        <span class="intel-label">Longest</span>
+        <span class="intel-val">{{ cycle_intel.longest }} days</span>
+      </div>
+      <div class="intel-row">
+        <span class="intel-label">Variation</span>
+        <span class="intel-val {% if cycle_intel.irregular %}text-warn{% endif %}">
+          {{ cycle_intel.variation }} days
+          {% if cycle_intel.irregular %} ⚠{% endif %}
+        </span>
+      </div>
+      <div class="intel-row">
+        <span class="intel-label">Cycles Tracked</span>
+        <span class="intel-val">{{ cycle_intel.count }}</span>
+      </div>
+      {% if cycle_intel.irregular %}
+      <div style="background:#fff3e0; border-radius:10px; padding:10px 12px;
+                  font-size:12px; color:#e65100; margin-top:4px;">
+        ⚠️ Your cycles vary by more than 7 days — slightly irregular.
+        Consider discussing with a healthcare professional.
+      </div>
+      {% else %}
+      <div style="background:#e8f5e9; border-radius:10px; padding:10px 12px;
+                  font-size:12px; color:#2e7d32; margin-top:4px;">
+        ✅ Your cycle length is consistent and regular.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+
+  <!-- ── Health Trends Charts ───────────────────── -->
+  <div class="dash-card {% if not cycle_intel %}span-2{% endif %}">
+    <div class="dash-card-title"><div class="card-icon">📊</div>Health Trends</div>
+    <div class="charts-grid">
+      <div>
+        <div style="font-size:12px; font-weight:600; color:#c2185b; margin-bottom:8px;">
+          Cycle Score Trend
+        </div>
+        <div style="position:relative; height:160px;">
+          <canvas id="cycleTrendChart"></canvas>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px; font-weight:600; color:#c2185b; margin-bottom:8px;">
+          Symptom Breakdown
+        </div>
+        <div style="position:relative; height:160px;">
+          <canvas id="symptomChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Vitals Trend Chart ────────────────────── -->
+  <div class="dash-card span-2" id="vitalsTrendCard" style="display:none;">
+    <div class="dash-card-title"><div class="card-icon">📡</div>Vitals Trend — Last 20 Readings</div>
+    <div class="charts-grid">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#c2185b;margin-bottom:8px;">❤️ Heart Rate (BPM)</div>
+        <div style="position:relative;height:140px;"><canvas id="bpmChart"></canvas></div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#1565c0;margin-bottom:8px;">🩸 Blood Oxygen (SpO2 %)</div>
+        <div style="position:relative;height:140px;"><canvas id="spo2Chart"></canvas></div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#e65100;margin-bottom:8px;">🌡️ Body Temperature (°C)</div>
+        <div style="position:relative;height:140px;"><canvas id="tempChart"></canvas></div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#2e7d32;margin-bottom:8px;">🔥 BMR (kcal/day)</div>
+        <div style="position:relative;height:140px;"><canvas id="bmrChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Anaemia Risk + Cycle Health ──────────── -->
+  {% if anaemia_risk is not none or cycle_health is not none %}
+  <div class="dash-card">
+    <div class="dash-card-title"><div class="card-icon">🩺</div>Health Intelligence</div>
+
+    {% if anaemia_risk is not none %}
+    <div style="margin-bottom:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:13px;font-weight:600;color:#555;">
+          🩸 Anaemia Risk Index
+        </div>
+        <div style="font-size:13px;font-weight:700;color:
+          {% if anaemia_risk < 30 %}#2e7d32
+          {% elif anaemia_risk < 60 %}#e65100
+          {% else %}#b71c1c{% endif %};">
+          {{ anaemia_risk }}%
+        </div>
+      </div>
+      <div style="background:#f5f5f5;border-radius:50px;height:10px;overflow:hidden;">
+        <div style="height:100%;width:{{ anaemia_risk }}%;border-radius:50px;
+                    background:{% if anaemia_risk < 30 %}linear-gradient(90deg,#a5d6a7,#4caf50)
+                               {% elif anaemia_risk < 60 %}linear-gradient(90deg,#ffcc80,#ff9800)
+                               {% else %}linear-gradient(90deg,#ef9a9a,#f44336){% endif %};
+                    transition:width 1s ease;"></div>
+      </div>
+      <div style="font-size:11px;color:#888;margin-top:5px;">
+        {% if anaemia_risk < 30 %}✅ Low risk — iron levels appear healthy
+        {% elif anaemia_risk < 60 %}⚠️ Moderate risk — consider iron-rich foods
+        {% else %}🚨 High risk — consult your doctor about iron deficiency{% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if cycle_health is not none %}
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:13px;font-weight:600;color:#555;">
+          💚 Cycle Health Score
+        </div>
+        <div style="font-size:13px;font-weight:700;color:
+          {% if cycle_health >= 70 %}#2e7d32
+          {% elif cycle_health >= 45 %}#e65100
+          {% else %}#b71c1c{% endif %};">
+          {{ cycle_health }}/100
+        </div>
+      </div>
+      <div style="background:#f5f5f5;border-radius:50px;height:10px;overflow:hidden;">
+        <div style="height:100%;width:{{ cycle_health }}%;border-radius:50px;
+                    background:{% if cycle_health >= 70 %}linear-gradient(90deg,#c8e6c9,#4caf50)
+                               {% elif cycle_health >= 45 %}linear-gradient(90deg,#ffe0b2,#ff9800)
+                               {% else %}linear-gradient(90deg,#ffcdd2,#f44336){% endif %};
+                    transition:width 1s ease;"></div>
+      </div>
+      <div style="font-size:11px;color:#888;margin-top:5px;">
+        {% if cycle_health >= 70 %}✅ Excellent — great overall health this cycle
+        {% elif cycle_health >= 45 %}⚠️ Fair — some areas need attention
+        {% else %}🚨 Low — consider lifestyle changes and a checkup{% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+  {% endif %}
+
+
+  <!-- ── Live Vitals Card ────────────────────────── -->
+  <div class="sensor-card">
+
+    <!-- Top label -->
+    <div style="text-align:center; margin-bottom:16px;">
+      <div style="font-size:11px; font-weight:700; letter-spacing:1.5px;
+                  text-transform:uppercase; color:rgba(255,255,255,.6);">
+        Live Health Vitals
+      </div>
+    </div>
+
+    <!-- 3 vitals row -->
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:14px;">
+
+      <div style="background:rgba(255,255,255,.12); border-radius:16px; padding:14px 10px; text-align:center;">
+        <div style="font-size:22px; margin-bottom:4px;">❤️</div>
+        <div style="font-size:24px; font-weight:700; color:#fff; font-family:'Playfair Display',serif;"
+             id="bpmVal">
+          <span class="loading-dot"></span><span class="loading-dot"></span>
+        </div>
+        <div style="font-size:10px; color:rgba(255,255,255,.6); margin-top:3px; font-weight:600;
+                    text-transform:uppercase; letter-spacing:.8px;">BPM</div>
+        <div style="font-size:10px; color:rgba(255,255,255,.5); margin-top:1px;">Heart Rate</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,.12); border-radius:16px; padding:14px 10px; text-align:center;">
+        <div style="font-size:22px; margin-bottom:4px;">🩸</div>
+        <div style="font-size:24px; font-weight:700; color:#fff; font-family:'Playfair Display',serif;"
+             id="spo2Val">
+          <span class="loading-dot"></span><span class="loading-dot"></span>
+        </div>
+        <div style="font-size:10px; color:rgba(255,255,255,.6); margin-top:3px; font-weight:600;
+                    text-transform:uppercase; letter-spacing:.8px;">SpO2 %</div>
+        <div style="font-size:10px; color:rgba(255,255,255,.5); margin-top:1px;">Blood Oxygen</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,.12); border-radius:16px; padding:14px 10px; text-align:center;">
+        <div style="font-size:22px; margin-bottom:4px;">🌡️</div>
+        <div style="font-size:24px; font-weight:700; color:#fff; font-family:'Playfair Display',serif;"
+             id="tempVal">
+          <span class="loading-dot"></span><span class="loading-dot"></span>
+        </div>
+        <div style="font-size:10px; color:rgba(255,255,255,.6); margin-top:3px; font-weight:600;
+                    text-transform:uppercase; letter-spacing:.8px;">°C</div>
+        <div style="font-size:10px; color:rgba(255,255,255,.5); margin-top:1px;">Temperature</div>
+      </div>
+
+    </div>
+
+    <div class="sensor-divider"></div>
+
+    <!-- BMR row -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
+      <div style="background:rgba(255,255,255,.10); border-radius:14px; padding:12px 10px; text-align:center;">
+        <div style="font-size:11px; color:rgba(255,255,255,.6); font-weight:600;
+                    text-transform:uppercase; letter-spacing:.8px; margin-bottom:4px;">🔥 BMR</div>
+        <div style="font-size:20px; font-weight:700; color:#fff;
+                    font-family:'Playfair Display',serif;" id="bmr">—</div>
+        <div style="font-size:10px; color:rgba(255,255,255,.5);">kcal / day</div>
+      </div>
+      <div style="background:rgba(255,255,255,.10); border-radius:14px; padding:12px 10px; text-align:center;">
+        <div style="font-size:11px; color:rgba(255,255,255,.6); font-weight:600;
+                    text-transform:uppercase; letter-spacing:.8px; margin-bottom:4px;">💊 Status</div>
+        <div id="statusWrap" style="margin-top:4px;">
+          <span class="status-pill"><span class="status-dot"></span>…</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vitals alert message -->
+    <div id="vitalsAlert" style="display:none; background:rgba(255,255,255,.15); border-radius:12px;
+         padding:10px 14px; margin-bottom:12px; font-size:12px; color:#fff; text-align:center;
+         border:1px solid rgba(255,255,255,.3);" id="healthMsg"></div>
+
+    <!-- Action buttons -->
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <button onclick="openReadingModal()"
+              style="background:rgba(255,255,255,.15); color:#fff; border:1.5px solid rgba(255,255,255,.4);
+                     padding:10px 18px; border-radius:50px; font-size:13px; font-weight:600;
+                     cursor:pointer; transition:all .3s; font-family:'DM Sans',sans-serif;"
+              onmouseover="this.style.background='rgba(255,255,255,.25)'"
+              onmouseout="this.style.background='rgba(255,255,255,.15)'">
+        🔄 Take New Reading
+      </button>
+      <a href="/download_report" class="btn-report">⬇ Download Health Report</a>
+    </div>
+
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════
+       SENSOR READING MODAL
+  ══════════════════════════════════════════════ -->
+  <div id="readingModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+
+      <!-- STEP 1: Place sensor instruction -->
+      <div id="step1">
+        <div style="font-size:56px; margin-bottom:14px; text-align:center;">💓</div>
+        <h3 class="modal-title">Place Sensor Now</h3>
+        <p class="modal-sub">
+          Place your finger on the <strong>MAX30102 sensor</strong> and keep the
+          <strong>DS18B20</strong> against your skin. Stay still for <strong>10 seconds</strong>.
+        </p>
+        <div class="modal-tips">
+          <div class="modal-tip">✅ Finger flat on MAX30102 (red light sensor)</div>
+          <div class="modal-tip">✅ DS18B20 touching your skin — wrist or palm</div>
+          <div class="modal-tip">✅ Breathe normally — don't hold breath</div>
+          <div class="modal-tip">❌ Don't move — movement affects heart rate reading</div>
+          <div class="modal-tip">❌ Avoid bright light on the sensor</div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:20px;">
+          <button onclick="startReading()" class="modal-btn-primary">
+            ✅ I'm Ready — Start Reading
+          </button>
+          <button onclick="closeModal()" class="modal-btn-cancel">Cancel</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Countdown + live readings -->
+      <div id="step2" style="display:none;">
+        <div style="font-size:48px; margin-bottom:10px; text-align:center;" id="countdownIcon">⏱</div>
+        <h3 class="modal-title">Reading in Progress…</h3>
+        <p class="modal-sub">Stay still. Taking 4 readings and averaging for accuracy.</p>
+
+        <!-- Progress bar -->
+        <div class="reading-progress-wrap">
+          <div class="reading-progress-bar" id="progressBar"></div>
+        </div>
+        <div style="text-align:center; font-size:28px; font-weight:700;
+                    font-family:'Playfair Display',serif; color:#c2185b; margin:10px 0;"
+             id="countdownNum">10</div>
+        <div style="text-align:center; font-size:13px; color:#aaa;" id="readingStatus">
+          Waiting for sensor…
+        </div>
+
+        <!-- Live 3-col vitals display -->
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:14px;">
+          <div style="background:#fff8fb; border-radius:12px; padding:10px 6px; text-align:center;
+                      border:1px solid #fce4ec;">
+            <div style="font-size:16px;">❤️</div>
+            <div style="font-size:18px; font-weight:700; color:#c2185b;" id="liveBpm">—</div>
+            <div style="font-size:10px; color:#aaa; font-weight:600;">BPM</div>
+          </div>
+          <div style="background:#fff8fb; border-radius:12px; padding:10px 6px; text-align:center;
+                      border:1px solid #fce4ec;">
+            <div style="font-size:16px;">🩸</div>
+            <div style="font-size:18px; font-weight:700; color:#c2185b;" id="liveSpo2">—</div>
+            <div style="font-size:10px; color:#aaa; font-weight:600;">SpO2 %</div>
+          </div>
+          <div style="background:#fff8fb; border-radius:12px; padding:10px 6px; text-align:center;
+                      border:1px solid #fce4ec;">
+            <div style="font-size:16px;">🌡️</div>
+            <div style="font-size:18px; font-weight:700; color:#c2185b;" id="liveTemp">—</div>
+            <div style="font-size:10px; color:#aaa; font-weight:600;">°C</div>
+          </div>
+        </div>
+
+        <!-- Sample log -->
+        <div id="sampleLog" style="margin-top:10px; background:#fff8fb; border-radius:12px;
+             padding:10px 14px; min-height:50px; font-size:12px; color:#888; line-height:1.8;">
+          Samples will appear here…
+        </div>
+      </div>
+
+      <!-- STEP 3: Result + confirm -->
+      <div id="step3" style="display:none;">
+        <div style="font-size:52px; margin-bottom:10px; text-align:center;">✅</div>
+        <h3 class="modal-title">Reading Complete</h3>
+        <p class="modal-sub">Averaged from <span id="sampleCount">4</span> readings.</p>
+
+        <!-- Vitals result grid -->
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div class="result-item">
+            <div class="result-label">❤️ Heart Rate</div>
+            <div class="result-val" id="resultBpm">—</div>
+            <div class="result-unit">BPM</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">🩸 Blood Oxygen</div>
+            <div class="result-val" id="resultSpo2">—</div>
+            <div class="result-unit">SpO2 %</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">🌡️ Temperature</div>
+            <div class="result-val" id="resultTemp">—</div>
+            <div class="result-unit">°C</div>
+          </div>
+        </div>
+
+        <!-- BMR + status -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div class="result-item">
+            <div class="result-label">🔥 BMR Value</div>
+            <div class="result-val" id="resultBmr">—</div>
+            <div class="result-unit">kcal / day</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">💊 Health Status</div>
+            <div id="resultStatus" style="margin-top:6px;"></div>
+          </div>
+        </div>
+
+        <div id="resultMsg"
+             style="margin-top:4px; padding:12px 14px; border-radius:12px;
+                    font-size:13px; font-weight:500; text-align:center;"></div>
+
+        <div style="display:flex; gap:10px; margin-top:18px; flex-wrap:wrap;">
+          <button onclick="saveReading()" class="modal-btn-primary" style="flex:1;">
+            💾 Save This Reading
+          </button>
+          <button onclick="retakeReading()" class="modal-btn-secondary" style="flex:1;">
+            🔄 Retake
+          </button>
+          <button onclick="closeModal()" class="modal-btn-cancel">Discard</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: Saved confirmation -->
+      <div id="step4" style="display:none; text-align:center;">
+        <div style="font-size:60px; margin-bottom:14px;">🎉</div>
+        <h3 class="modal-title">Reading Saved!</h3>
+        <p class="modal-sub">Your health vitals have been saved to your history.</p>
+        <button onclick="closeModal(); location.reload();" class="modal-btn-primary"
+                style="margin-top:16px; width:100%;">
+          ✓ Done — Refresh Dashboard
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ── Vitals History ───────────────────────── -->
+  <div class="dash-card history-card">
+    <div class="dash-card-title">
+      <div class="card-icon">📋</div>Health Vitals History
+      <span style="font-size:12px;font-weight:400;color:#999;margin-left:auto;">Last 10 readings</span>
+    </div>
+    {% if history %}
+    <div class="history-table-wrap">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>❤️ BPM</th>
+            <th>🩸 SpO2 %</th>
+            <th>🌡️ Temp °C</th>
+            <th>🔥 BMR</th>
+            <th>BMR Status</th>
+            <th>Date & Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in history %}
+          <tr>
+            <td style="color:#bbb;font-size:12px;">{{ loop.index }}</td>
+            <td><strong>{{ h['bpm'] or '—' }}</strong></td>
+            <td><strong>{{ h['spo2'] or '—' }}</strong></td>
+            <td><strong>{{ h['temperature'] or '—' }}</strong></td>
+            <td><strong>{{ h['bmr'] }}</strong></td>
+            <td>
+              {% if h['bmr'] < 1200 %}<span class="bmr-badge low">Low</span>
+              {% elif h['bmr'] > 2500 %}<span class="bmr-badge high">High</span>
+              {% else %}<span class="bmr-badge normal">Normal</span>{% endif %}
+            </td>
+            <td style="color:#999;font-size:12px;">{{ h['time'] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><span>📭</span>No records yet. Vitals readings will appear here.</div>
+    {% endif %}
+  </div>
+
+
+  <!-- ── Doctor Visit Tracker ──────────────────── -->
+  <div class="dash-card">
+    <div class="dash-card-title">
+      <div class="card-icon">🏥</div>Doctor Visits
+      <a onclick="openNearbyDoctors()" href="#"
+         style="margin-left:auto; font-size:12px; color:#c2185b;
+         font-weight:600; text-decoration:none; background:#fce4ec;
+         padding:5px 12px; border-radius:50px;">+ Add Visit</a>
+    </div>
+    {% if doctor_visits %}
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      {% for v in doctor_visits %}
+      <div style="background:#fff8fb; border-radius:12px; padding:14px 16px;
+                  border-left:3px solid #f48fb1; position:relative;">
+        <div style="font-size:13px; font-weight:600; color:#2d2d2d; margin-bottom:4px;">
+          🗓 {{ v['visit_date'] }}
+        </div>
+        {% if v['diagnosis'] %}
+        <div style="font-size:12px; color:#666; margin-bottom:3px;">
+          <strong>Diagnosis:</strong> {{ v['diagnosis'] }}
+        </div>
+        {% endif %}
+        {% if v['medication'] %}
+        <div style="font-size:12px; color:#666; margin-bottom:3px;">
+          <strong>Medication:</strong> {{ v['medication'] }}
+        </div>
+        {% endif %}
+        {% if v['next_appt'] %}
+        <div style="font-size:12px; color:#c2185b; font-weight:600;">
+          Next Appointment: {{ v['next_appt'] }}
+        </div>
+        {% endif %}
+        <button onclick="deleteDoctorVisit({{ v['id'] }}, this)"
+                style="position:absolute; top:10px; right:10px; background:none;
+                       border:none; cursor:pointer; font-size:14px; color:#ddd;"
+                onmouseover="this.style.color='#e53935'"
+                onmouseout="this.style.color='#ddd'">🗑</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <span>🏥</span>No doctor visits logged yet.
+      <a onclick="openNearbyDoctors()" href="#"
+         style="display:block;margin-top:10px;color:#c2185b;
+         font-size:13px;font-weight:600;text-decoration:none;">+ Log a Visit</a>
+    </div>
+    {% endif %}
+  </div>
+
+
+  <!-- ── Nearby Doctors Directory (hidden, opens as modal) ── -->
+  <!-- ══════════════════════════════════════════════
+       NEARBY DOCTORS MODAL (triggered by visit buttons)
+  ══════════════════════════════════════════════ -->
+  <div id="nearbyDoctorsModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:440px; position:relative;">
+
+      <button onclick="closeNearbyDoctors()"
+              style="position:absolute;top:16px;right:18px;background:none;border:none;
+                     font-size:20px;color:#bbb;cursor:pointer;"
+              onmouseover="this.style.color='#333'"
+              onmouseout="this.style.color='#bbb'">✕</button>
+
+      <div style="text-align:center; margin-bottom:20px;">
+        <div style="font-size:40px; margin-bottom:8px;">👩‍⚕️</div>
+        <div style="font-family:'Playfair Display',serif; font-size:20px;
+                    font-weight:700; color:#c2185b; margin-bottom:4px;">
+          Nearby Gynaecologists
+        </div>
+        <div style="font-size:12px; color:#aaa;">Dumka, Jharkhand — Tap to view contact details</div>
+      </div>
+
+      <!-- Doctor 1 -->
+      <div class="doctor-card" onclick="openDoctor(0)">
+        <div class="doctor-avatar">👩‍⚕️</div>
+        <div class="doctor-info">
+          <div class="doctor-name">Dr. Ankita Singh</div>
+          <div class="doctor-tags">
+            <span class="doctor-tag">Pregnancy</span>
+            <span class="doctor-tag">High-Risk</span>
+            <span class="doctor-tag">Irregular Periods</span>
+            <span class="doctor-tag tag-online">🌐 Online</span>
+          </div>
+        </div>
+        <div class="doctor-arrow">›</div>
+      </div>
+
+      <!-- Doctor 2 -->
+      <div class="doctor-card" onclick="openDoctor(1)">
+        <div class="doctor-avatar">👩‍⚕️</div>
+        <div class="doctor-info">
+          <div class="doctor-name">Dr. Rukhsana Yasmin</div>
+          <div class="doctor-tags">
+            <span class="doctor-tag">Gynaecology</span>
+            <span class="doctor-tag">Obstetrics</span>
+            <span class="doctor-tag tag-hours">⏰ 10AM–7PM</span>
+          </div>
+        </div>
+        <div class="doctor-arrow">›</div>
+      </div>
+
+      <!-- Hospital -->
+      <div class="doctor-card" onclick="openDoctor(2)" style="margin-bottom:0;">
+        <div class="doctor-avatar">🏥</div>
+        <div class="doctor-info">
+          <div class="doctor-name">Bharati Hospital</div>
+          <div class="doctor-tags">
+            <span class="doctor-tag">Maternity</span>
+            <span class="doctor-tag">Emergency</span>
+            <span class="doctor-tag tag-emergency">🚑 Ambulance</span>
+          </div>
+        </div>
+        <div class="doctor-arrow">›</div>
+      </div>
+
+      <button onclick="closeNearbyDoctors(); window.location.href='/doctor_visit';"
+              class="modal-btn-primary"
+              style="width:100%; margin-top:18px;">
+        📋 Log a Doctor Visit
+      </button>
+
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════
+       DOCTOR DETAIL MODAL
+  ══════════════════════════════════════════════ -->
+  <div id="doctorModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:420px; position:relative;">
+
+      <button onclick="closeDoctorModal()"
+              style="position:absolute;top:16px;right:18px;background:none;border:none;
+                     font-size:20px;color:#bbb;cursor:pointer;line-height:1;"
+              onmouseover="this.style.color='#333'"
+              onmouseout="this.style.color='#bbb'">✕</button>
+
+      <!-- Avatar + Name -->
+      <div style="text-align:center; margin-bottom:20px;">
+        <div id="docModalIcon" style="font-size:52px; margin-bottom:8px;">👩‍⚕️</div>
+        <div id="docModalName"
+             style="font-family:'Playfair Display',serif; font-size:22px;
+                    font-weight:700; color:#c2185b; margin-bottom:4px;"></div>
+        <div id="docModalTitle"
+             style="font-size:13px; color:#aaa; font-weight:500;"></div>
+      </div>
+
+      <!-- Location -->
+      <div class="doc-detail-row">
+        <div class="doc-detail-icon">📍</div>
+        <div>
+          <div class="doc-detail-label">Location</div>
+          <div id="docModalLocation" class="doc-detail-value"></div>
+        </div>
+      </div>
+
+      <!-- Hours -->
+      <div id="docModalHoursRow" class="doc-detail-row" style="display:none;">
+        <div class="doc-detail-icon">⏰</div>
+        <div>
+          <div class="doc-detail-label">Working Hours</div>
+          <div id="docModalHours" class="doc-detail-value"></div>
+        </div>
+      </div>
+
+      <!-- Phone numbers -->
+      <div id="docModalPhonesRow" class="doc-detail-row">
+        <div class="doc-detail-icon">📞</div>
+        <div style="flex:1;">
+          <div class="doc-detail-label">Contact</div>
+          <div id="docModalPhones"></div>
+        </div>
+      </div>
+
+      <!-- Services -->
+      <div class="doc-detail-row" style="align-items:flex-start;">
+        <div class="doc-detail-icon">✅</div>
+        <div>
+          <div class="doc-detail-label">Services</div>
+          <div id="docModalServices"></div>
+        </div>
+      </div>
+
+      <!-- Call buttons -->
+      <div id="docModalCallBtns" style="margin-top:20px; display:flex; flex-direction:column; gap:10px;"></div>
+
+    </div>
+  </div>
+
+  <!-- ── Cycle History Timeline ─────────────────── -->
+  {% if cycle_history %}
+  <div class="dash-card history-card">
+    <div class="dash-card-title"><div class="card-icon">📅</div>Cycle History
+      <span style="margin-left:auto;font-size:11px;color:#aaa;font-weight:400;">
+        Tap a cycle to view daily logs
+      </span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      {% for c in cycle_history %}
+      <div class="cycle-row cycle-row-clickable"
+           onclick="openCycleLog({{ c['id'] }}, this)"
+           style="cursor:pointer; border-left-color:
+           {% if c['overall_label'] == 'Mild' %}#43a047
+           {% elif c['overall_label'] == 'Moderate' %}#fb8c00
+           {% elif c['overall_label'] == 'Severe' %}#e53935
+           {% else %}#c2185b{% endif %};"
+           data-label="{{ c['overall_label'] or '' }}"
+           data-start="{{ c['start_date'] }}"
+           data-end="{{ c['end_date'] }}"
+           data-avg="{{ c['avg_score'] }}"
+           data-worst="{{ c['worst_day'] or '' }}"
+           data-worst-score="{{ c['worst_score'] or '' }}"
+           data-best="{{ c['best_day'] or '' }}"
+           data-id="{{ c['id'] }}">
+        <div style="flex:1;">
+          <div style="font-size:13px; font-weight:600; color:#2d2d2d;">
+            📅 {{ c['start_date'] }} → {{ c['end_date'] }}
+          </div>
+          <div style="font-size:12px; color:#aaa; margin-top:2px;">
+            Avg score: {{ c['avg_score'] }} &nbsp;·&nbsp;
+            Worst: Day {{ c['worst_day'] or '—' }} &nbsp;·&nbsp;
+            <span style="color:#c2185b;">Tap to view logs →</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px; flex-shrink:0;">
+          <span class="cycle-label-badge
+            {% if c['overall_label'] == 'Mild' %}badge-green
+            {% elif c['overall_label'] == 'Moderate' %}badge-orange
+            {% else %}badge-red{% endif %}">
+            {{ c['overall_label'] or '—' }}
+          </span>
+          <a href="/download_cycle_report/{{ c['id'] }}"
+             onclick="event.stopPropagation()"
+             style="font-size:12px;color:#c2185b;font-weight:600;text-decoration:none;
+                    white-space:nowrap;">⬇ PDF</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+
+  <!-- ══════════════════════════════════════════════
+       CYCLE LOG DETAIL MODAL
+  ══════════════════════════════════════════════ -->
+  <div id="cycleLogModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:500px; position:relative; max-height:90vh;
+                                   overflow-y:auto;">
+
+      <button onclick="closeCycleModal()"
+              style="position:sticky;top:0;float:right;background:none;border:none;
+                     font-size:20px;color:#bbb;cursor:pointer;z-index:10;"
+              onmouseover="this.style.color='#333'"
+              onmouseout="this.style.color='#bbb'">✕</button>
+
+      <!-- Header -->
+      <div style="margin-bottom:18px;">
+        <div style="font-size:11px;font-weight:700;color:#c2185b;text-transform:uppercase;
+                    letter-spacing:1px;margin-bottom:6px;">📅 Cycle Summary</div>
+        <div id="clmTitle"
+             style="font-family:'Playfair Display',serif;font-size:20px;
+                    font-weight:700;color:#2d2d2d;margin-bottom:4px;"></div>
+        <div id="clmMeta" style="font-size:12px;color:#aaa;"></div>
+      </div>
+
+      <!-- Cycle overview stats -->
+      <div id="clmStats"
+           style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;"></div>
+
+      <!-- Loading spinner -->
+      <div id="clmLoading" style="text-align:center;padding:30px 0;color:#bbb;font-size:13px;">
+        Loading daily logs…
+      </div>
+
+      <!-- Daily logs list -->
+      <div id="clmLogs" style="display:none;">
+        <div style="font-size:11px;font-weight:700;color:#c2185b;text-transform:uppercase;
+                    letter-spacing:1px;margin-bottom:10px;">📋 Daily Log Breakdown</div>
+        <div id="clmLogsList"></div>
+      </div>
+
+      <!-- Doctor referral (shown when severe) -->
+      <div id="clmDoctorAlert" style="display:none; margin-top:16px;
+           background:#fff0f6;border:1.5px solid #f8bbd0;border-radius:14px;padding:16px 18px;">
+        <div style="font-size:13px;font-weight:700;color:#c2185b;margin-bottom:6px;">
+          ⚠️ Severe symptoms detected in this cycle
+        </div>
+        <div style="font-size:12px;color:#666;margin-bottom:12px;line-height:1.6;">
+          Your symptom scores suggest it may be worth consulting a gynaecologist.
+          Tap below to view nearby doctors in Dumka.
+        </div>
+        <button onclick="closeCycleModal(); openNearbyDoctors();"
+                class="modal-btn-primary" style="width:100%;font-size:13px;">
+          👩‍⚕️ View Nearby Doctors
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<!-- end dashboard-grid -->
+
+
+<!-- ══════════════════════════════════════════════
+     ARTICLES
+══════════════════════════════════════════════ -->
+<section class="articles">
+
+  <!-- ══ HUB HEADER ══════════════════════════════════════════════ -->
+  <div style="text-align:center; margin-bottom:48px;">
+    <div style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#fce4ec,#f3e5f5);
+                border-radius:50px;padding:8px 22px;margin-bottom:16px;font-size:13px;
+                font-weight:700;color:#880e4f;letter-spacing:1px;text-transform:uppercase;">
+      🌸 Women's Wellness Library
+    </div>
+    <h2 style="font-family:'Playfair Display',serif;font-size:36px;font-weight:700;
+               color:#2d2d2d;margin:0 0 12px;">Health Knowledge Hub</h2>
+    <p style="font-size:15px;color:#888;max-width:580px;margin:0 auto;line-height:1.7;">
+      Evidence-based guidance, diet plans, and lifestyle tips personalised by your health score — everything you need to feel your best.
+    </p>
+  </div>
+
+  <!-- ══ SCORE-BASED DIET PLANS ════════════════════════════════ -->
+  {% if assessment %}
+  {% set sc = assessment['score'] %}
+  <div style="background:linear-gradient(135deg,
+    {% if sc <= 8 %}#e8f5e9,#f1f8e9{% elif sc <= 16 %}#fff3e0,#fff8e1{% elif sc <= 24 %}#fce4ec,#fce4ec{% else %}#fdecea,#fce4ec{% endif %});
+    border-radius:24px;padding:30px 36px;margin-bottom:36px;
+    border:1.5px solid {% if sc <= 8 %}#a5d6a7{% elif sc <= 16 %}#ffcc80{% elif sc <= 24 %}#f48fb1{% else %}#ef9a9a{% endif %};">
+    <div style="display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;">
+      <div style="font-size:52px;line-height:1;">
+        {% if sc <= 8 %}🌿{% elif sc <= 16 %}🌼{% elif sc <= 24 %}🌹{% else %}🆘{% endif %}
+      </div>
+      <div style="flex:1;min-width:240px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+                    color:{% if sc <= 8 %}#2e7d32{% elif sc <= 16 %}#e65100{% elif sc <= 24 %}#880e4f{% else %}#b71c1c{% endif %};
+                    margin-bottom:6px;">
+          Your Assessment Score: {{ sc }}/30 &nbsp;·&nbsp;
+          {% if sc <= 8 %}Normal Range
+          {% elif sc <= 16 %}Mild to Moderate PMS
+          {% elif sc <= 24 %}Severe PMS
+          {% else %}Medical Attention Recommended{% endif %}
+        </div>
+        <div style="font-size:20px;font-weight:700;color:#2d2d2d;margin-bottom:10px;
+                    font-family:'Playfair Display',serif;">
+          {% if sc <= 8 %}Maintenance & Glow Plan 🌟
+          {% elif sc <= 16 %}Balance & Relief Plan 🌿
+          {% elif sc <= 24 %}Recovery & Comfort Plan 💗
+          {% else %}Medical Support Plan 🏥{% endif %}
+        </div>
+
+        <!-- Diet plan grid -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+          {% if sc <= 8 %}
+          <div style="background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #c8e6c9;">
+            <div style="font-size:12px;font-weight:700;color:#2e7d32;margin-bottom:6px;">🥗 Daily Diet</div>
+            <div style="font-size:12px;color:#444;line-height:1.6;">• Dal + brown rice + sabzi<br>• Fresh fruits (banana, apple)<br>• Curd / yoghurt daily<br>• 8–10 glasses of water<br>• Green leafy vegetables</div>
+          </div>
+          <div style="background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #c8e6c9;">
+            <div style="font-size:12px;font-weight:700;color:#2e7d32;margin-bottom:6px;">✅ Keep Doing</div>
+            <div style="font-size:12px;color:#444;line-height:1.6;">• 30 min morning walk<br>• Yoga or light stretching<br>• 7–8 hrs sleep every night<br>• Track your cycle monthly<br>• Annual gynaec checkup</div>
+          </div>
+          {% elif sc <= 16 %}
+          <div style="background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #ffcc80;">
+            <div style="font-size:12px;font-weight:700;color:#e65100;margin-bottom:6px;">🍽️ Anti-PMS Diet</div>
+            <div style="font-size:12px;color:#444;line-height:1.6;">• Iron-rich foods: spinach, lentils<br>• Magnesium: dark chocolate, nuts<br>• Omega-3: flaxseeds, fish<br>• Avoid salty / processed foods<br>• Chamomile or ginger tea</div>
+          </div>
+          <div style="background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #ffcc80;">
+            <div style="font-size:12px;font-weight:700;color:#e65100;margin-bottom:6px;">🧘 Lifestyle Tips</div>
+            <div style="font-size:12px;color:#444;line-height:1.6;">• Evening walk 20–30 min<br>• Reduce caffeine & sugar<br>• Warm compress for cramps<br>• Deep breathing exercises<br>• Log symptoms daily</div>
+          </div>
+          {% elif sc <= 24 %}
+          <div style="background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #f48fb1;">
+            <div style="font-size:12px;font-weight:700;color:#880e4f;margin-bottom:6px;">💊 Recovery Diet</div>
+            <div style="font-size:12px;color:#444;line-height:1.6;">• Iron supplement + Vit C<br>• Warm soups & broths<br>• Avoid dairy during periods<br>• B6 foods: bananas, potatoes<br>• Turmeric milk before sleep</div>
+          </div>
+          <div style="background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #f48fb1;">
+            <div style="font-size:12px;font-weight:700;color:#880e4f;margin-bottom:6px;">🏥 What To Do</div>
+            <div style="font-size:12px;color:#444;line-height:1.6;">• Book a gynaecology visit<br>• Track pain with heat therapy<br>• Gentle yoga (child's pose)<br>• Rest during heavy flow days<br>• Talk to a trusted adult</div>
+          </div>
+          {% else %}
+          <div style="background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #ef9a9a;">
+            <div style="font-size:12px;font-weight:700;color:#b71c1c;margin-bottom:6px;">⚠️ Priority Diet</div>
+            <div style="font-size:12px;color:#444;line-height:1.6;">• High-iron: pomegranate, beet<br>• Protein: eggs, paneer, lentils<br>• Avoid spicy & oily foods<br>• Electrolyte drinks if fatigued<br>• Small meals every 3 hrs</div>
+          </div>
+          <div style="background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #ef9a9a;">
+            <div style="font-size:12px;font-weight:700;color:#b71c1c;margin-bottom:6px;">🚨 Urgent Action</div>
+            <div style="font-size:12px;color:#444;line-height:1.6;">• See a doctor immediately<br>• Share your GraceHealth report<br>• Strict rest on painful days<br>• No self-medication<br>• Call Dr. Ankita: 93342 39788</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ══ KNOWLEDGE CARDS GRID ══════════════════════════════════ -->
+  <div class="hub-grid">
+
+    <!-- Card 1: Cycle Phases -->
+    <div class="hub-card hub-pink">
+      <div class="hub-card-top">
+        <div class="hub-icon-wrap" style="background:#fce4ec;">🌕</div>
+        <div class="hub-tag" style="background:#fce4ec;color:#c2185b;">Cycle Science</div>
+      </div>
+      <h3>Your 4 Cycle Phases Explained</h3>
+      <p>Your body goes through 4 distinct phases every month — each with unique energy, mood, and nutritional needs.</p>
+      <div class="hub-pills">
+        <span style="background:#fce4ec;color:#c2185b;">🩸 Menstrual (Day 1–5)</span>
+        <span style="background:#e8f5e9;color:#2e7d32;">🌱 Follicular (Day 6–13)</span>
+        <span style="background:#fff3e0;color:#e65100;">🌟 Ovulation (Day 14)</span>
+        <span style="background:#f3e5f5;color:#6a1b9a;">🌙 Luteal (Day 15–28)</span>
+      </div>
+      <div class="hub-tip">💡 <strong>Tip:</strong> Eat iron-rich foods in menstrual phase, carbs in luteal phase for energy & mood balance.</div>
+    </div>
+
+    <!-- Card 2: Nutrition Atlas -->
+    <div class="hub-card hub-green">
+      <div class="hub-card-top">
+        <div class="hub-icon-wrap" style="background:#e8f5e9;">🥗</div>
+        <div class="hub-tag" style="background:#e8f5e9;color:#2e7d32;">Nutrition</div>
+      </div>
+      <h3>Period Nutrition Atlas</h3>
+      <p>Targeted foods for every phase that ease pain, reduce bloating, and keep your hormones happy.</p>
+      <div class="hub-food-list">
+        <div class="hub-food-row"><span>🫘 Lentils & Spinach</span><span class="hub-food-badge" style="background:#e8f5e9;color:#2e7d32;">Iron</span></div>
+        <div class="hub-food-row"><span>🍌 Banana & Nuts</span><span class="hub-food-badge" style="background:#fff3e0;color:#e65100;">Magnesium</span></div>
+        <div class="hub-food-row"><span>🐟 Flaxseeds & Fish</span><span class="hub-food-badge" style="background:#e3f2fd;color:#1565c0;">Omega-3</span></div>
+        <div class="hub-food-row"><span>🥛 Yoghurt & Paneer</span><span class="hub-food-badge" style="background:#f3e5f5;color:#6a1b9a;">Calcium</span></div>
+        <div class="hub-food-row"><span>🍊 Orange & Amla</span><span class="hub-food-badge" style="background:#e8f5e9;color:#2e7d32;">Vitamin C</span></div>
+      </div>
+      <div class="hub-tip">💡 <strong>Avoid:</strong> Excess salt, caffeine, and fried foods — they worsen bloating and mood swings.</div>
+    </div>
+
+    <!-- Card 3: BMR & Health Monitoring -->
+    <div class="hub-card hub-purple">
+      <div class="hub-card-top">
+        <div class="hub-icon-wrap" style="background:#f3e5f5;">📊</div>
+        <div class="hub-tag" style="background:#f3e5f5;color:#6a1b9a;">Vitals</div>
+      </div>
+      <h3>Understanding Your Vitals</h3>
+      <p>Your sensor tracks three critical markers that together tell a complete picture of your health.</p>
+      <div class="hub-vitals-list">
+        <div class="hub-vital-row">
+          <div class="hub-vital-icon" style="background:#fce4ec;color:#c2185b;">❤️</div>
+          <div><strong>Heart Rate</strong><br><span>Normal: 60–100 BPM. Above 110 may signal stress or anaemia.</span></div>
+        </div>
+        <div class="hub-vital-row">
+          <div class="hub-vital-icon" style="background:#e3f2fd;color:#1565c0;">🩸</div>
+          <div><strong>Blood Oxygen (SpO2)</strong><br><span>Normal: 95–100%. Below 94% can indicate anaemia or low iron.</span></div>
+        </div>
+        <div class="hub-vital-row">
+          <div class="hub-vital-icon" style="background:#fff3e0;color:#e65100;">🌡️</div>
+          <div><strong>Body Temperature</strong><br><span>Normal: 36.1–37.5°C. Spikes may signal infection or ovulation.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4: Exercise Guide -->
+    <div class="hub-card hub-orange">
+      <div class="hub-card-top">
+        <div class="hub-icon-wrap" style="background:#fff3e0;">💪</div>
+        <div class="hub-tag" style="background:#fff3e0;color:#e65100;">Exercise</div>
+      </div>
+      <h3>Move With Your Cycle</h3>
+      <p>Working out in sync with your hormones boosts results and reduces pain. Not all days are the same!</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin:12px 0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    background:#fff3e0;border-radius:10px;padding:8px 12px;">
+          <span style="font-size:12px;font-weight:600;color:#e65100;">🩸 Day 1–5 (Menstrual)</span>
+          <span style="font-size:11px;color:#888;">Rest · Light yoga · Walking</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    background:#e8f5e9;border-radius:10px;padding:8px 12px;">
+          <span style="font-size:12px;font-weight:600;color:#2e7d32;">🌱 Day 6–13 (Follicular)</span>
+          <span style="font-size:11px;color:#888;">Strength · Cardio · Dance</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    background:#fff8e1;border-radius:10px;padding:8px 12px;">
+          <span style="font-size:12px;font-weight:600;color:#f57f17;">🌟 Day 14 (Ovulation)</span>
+          <span style="font-size:11px;color:#888;">HIIT · Running · Sports</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    background:#f3e5f5;border-radius:10px;padding:8px 12px;">
+          <span style="font-size:12px;font-weight:600;color:#6a1b9a;">🌙 Day 15–28 (Luteal)</span>
+          <span style="font-size:11px;color:#888;">Pilates · Swimming · Stretching</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 5: PMS & Stress -->
+    <div class="hub-card hub-blue">
+      <div class="hub-card-top">
+        <div class="hub-icon-wrap" style="background:#e3f2fd;">🧠</div>
+        <div class="hub-tag" style="background:#e3f2fd;color:#1565c0;">Mental Health</div>
+      </div>
+      <h3>Managing PMS & Mood</h3>
+      <p>Hormonal changes affect your brain chemistry. Here's how to ride the wave with grace.</p>
+      <div style="margin:12px 0;display:flex;flex-direction:column;gap:8px;">
+        <div class="hub-check-row">😴 Sleep 7–8 hrs — low sleep worsens cramps and mood 3×</div>
+        <div class="hub-check-row">☀️ Get 15 min of sunlight daily to boost serotonin naturally</div>
+        <div class="hub-check-row">🧘 Meditation 10 min/day reduces cortisol by up to 30%</div>
+        <div class="hub-check-row">📓 Journaling your feelings reduces emotional intensity</div>
+        <div class="hub-check-row">🚫 Avoid alcohol — it depletes B-vitamins that regulate mood</div>
+      </div>
+      <div class="hub-tip">💡 <strong>Remember:</strong> Mood swings 5–7 days before your period are PMS — log them in your daily diary.</div>
+    </div>
+
+    <!-- Card 6: Anaemia & Iron -->
+    <div class="hub-card hub-red">
+      <div class="hub-card-top">
+        <div class="hub-icon-wrap" style="background:#fdecea;">🔴</div>
+        <div class="hub-tag" style="background:#fdecea;color:#b71c1c;">Anaemia Awareness</div>
+      </div>
+      <h3>Iron Deficiency & Women</h3>
+      <p>1 in 3 Indian women are anaemic. Heavy periods, low SpO2, and fatigue are the key warning signs.</p>
+      <div class="hub-warn-box">
+        <strong>🚨 Warning Signs of Anaemia:</strong><br>
+        Pale skin · Extreme tiredness · SpO2 below 94% · Fast heartbeat · Dizziness · Breathlessness
+      </div>
+      <div style="margin-top:12px;">
+        <div style="font-size:12px;font-weight:700;color:#b71c1c;margin-bottom:6px;">Best Iron Sources for Indian Women:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          {% for food in ['Palak (Spinach)','Rajma','Pomegranate','Dates','Beetroot','Jaggery','Horse gram','Methi'] %}
+          <span style="background:#fdecea;color:#b71c1c;padding:4px 10px;border-radius:20px;
+                        font-size:11px;font-weight:600;">{{ food }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="hub-tip">💡 Eat iron foods with Vitamin C (lemon, amla) to absorb 3× more iron.</div>
+    </div>
+
+    <!-- Card 7: Hydration -->
+    <div class="hub-card hub-cyan">
+      <div class="hub-card-top">
+        <div class="hub-icon-wrap" style="background:#e0f7fa;">💧</div>
+        <div class="hub-tag" style="background:#e0f7fa;color:#00695c;">Hydration</div>
+      </div>
+      <h3>Water & Women's Health</h3>
+      <p>Dehydration worsens cramps, fatigue, and brain fog. Water is your cheapest medicine.</p>
+      <div style="margin:12px 0;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <div style="font-size:24px;">🥤</div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;color:#2d2d2d;">Target: 8–10 glasses/day</div>
+            <div style="font-size:11px;color:#888;">Increases to 12 glasses during periods</div>
+          </div>
+        </div>
+        <div class="hub-check-row">☕ Replace 1 coffee with herbal tea (ginger, chamomile)</div>
+        <div class="hub-check-row">🍉 Eat water-rich foods: cucumber, watermelon, curd</div>
+        <div class="hub-check-row">⏰ Drink a glass of water right after waking up</div>
+        <div class="hub-check-row">🧂 Add a pinch of rock salt + lemon if feeling tired</div>
+      </div>
+    </div>
+
+    <!-- Card 8: Sleep -->
+    <div class="hub-card hub-night">
+      <div class="hub-card-top">
+        <div class="hub-icon-wrap" style="background:#ede7f6;">🌙</div>
+        <div class="hub-tag" style="background:#ede7f6;color:#4527a0;">Sleep Science</div>
+      </div>
+      <h3>Sleep & Hormone Balance</h3>
+      <p>Poor sleep raises cortisol which directly worsens PMS, period pain, and irregular cycles.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;">
+        <div style="background:#ede7f6;border-radius:12px;padding:10px 12px;text-align:center;">
+          <div style="font-size:22px;">7–9</div>
+          <div style="font-size:10px;color:#4527a0;font-weight:700;">HOURS NEEDED</div>
+        </div>
+        <div style="background:#ede7f6;border-radius:12px;padding:10px 12px;text-align:center;">
+          <div style="font-size:22px;">10pm</div>
+          <div style="font-size:10px;color:#4527a0;font-weight:700;">IDEAL BEDTIME</div>
+        </div>
+      </div>
+      <div class="hub-check-row">📵 No phone 30 min before bed — blue light blocks melatonin</div>
+      <div class="hub-check-row">🌡️ Cool dark room (18–22°C) improves sleep depth</div>
+      <div class="hub-check-row">🫖 Chamomile tea helps with cramps AND sleep quality</div>
+      <div class="hub-tip" style="margin-top:10px;">💡 During PMS week, you may need 1 extra hour of sleep — that's normal.</div>
+    </div>
+
+  </div><!-- end hub-grid -->
+
+</section>
+
+
+<footer class="site-footer">
+  GraceHealth Monitoring System &nbsp;·&nbsp; Built with 💗 for women's wellness
+</footer>
+
+
+<!-- ══════════════════════════════════════════════
+     STYLES
+══════════════════════════════════════════════ -->
+<style>
+  /* Notifications */
+  .notifications-wrap { max-width:1200px; margin:12px auto 0; padding:0 24px;
+                        display:flex; flex-direction:column; gap:8px; }
+  .notif-banner { display:flex; align-items:center; gap:12px; padding:12px 18px;
+                  border-radius:12px; font-size:13px; font-weight:500; }
+  .notif-banner.notif-warning  { background:#fff8e1; border:1px solid #ffd54f; color:#e65100; }
+  .notif-banner.notif-success  { background:#e8f5e9; border:1px solid #a5d6a7; color:#2e7d32; }
+  .notif-banner.notif-info     { background:#e3f2fd; border:1px solid #90caf9; color:#1565c0; }
+  .notif-banner.notif-tip      { background:#f3e5f5; border:1px solid #ce93d8; color:#6a1b9a; }
+  .notif-icon  { font-size:18px; flex-shrink:0; }
+  .notif-msg   { flex:1; }
+  .notif-close { background:none; border:none; cursor:pointer; font-size:14px;
+                 color:#aaa; margin-left:auto; padding:0; transition:color .2s; }
+  .notif-close:hover { color:#333; }
+
+  /* Stat strip */
+  .stat-strip { display:flex; gap:0; margin:20px auto; max-width:1200px;
+                padding:0 24px; flex-wrap:wrap; }
+  .stat-strip-item { flex:1; min-width:140px; display:flex; align-items:center; gap:12px;
+                     background:#fff; padding:16px 20px;
+                     border-right:1px solid #f5f5f5; }
+  .stat-strip-item:first-child { border-radius:16px 0 0 16px; }
+  .stat-strip-item:last-child  { border-radius:0 16px 16px 0; border-right:none; }
+  .stat-strip { box-shadow:0 2px 16px rgba(194,24,91,.06); border-radius:16px; overflow:hidden; }
+  .stat-strip-icon { width:40px; height:40px; border-radius:10px; display:flex;
+                     align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .stat-strip-val   { font-family:'Playfair Display',serif; font-size:20px;
+                      font-weight:700; color:#c2185b; line-height:1; }
+  .stat-strip-label { font-size:11px; color:#aaa; margin-top:2px; font-weight:500; }
+
+  /* Phase card */
+  .phase-card { background:#fff; border-radius:16px; padding:20px 24px;
+                box-shadow:0 2px 16px rgba(0,0,0,.05);
+                display:grid; grid-template-columns:180px 1fr 200px;
+                align-items:center; gap:20px; }
+  .phase-left  { }
+  .phase-right { background:#f9f9f9; border-radius:12px; padding:14px 18px; }
+  .phase-phases { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+  .phase-step { display:flex; flex-direction:column; align-items:center; gap:4px;
+                padding:8px 12px; border-radius:10px; font-size:12px;
+                background:#f9f9f9; color:#888; min-width:60px; text-align:center; }
+  .phase-step.active { background:var(--ph-color); color:#fff; font-weight:600; }
+
+  /* Period tracker grid */
+  .period-tracker-grid { display:grid; grid-template-columns:1fr 1fr 1fr;
+                         gap:20px; align-items:start; margin-top:4px; }
+  .active-period-badge { background:linear-gradient(135deg,#c2185b,#e91e8c); color:#fff;
+                         border-radius:14px; padding:18px 20px; margin-bottom:14px; }
+  .today-log-box { background:#e8f5e9; border-radius:12px; padding:12px 14px; margin-bottom:10px; }
+  .no-period-box { background:#f5f5f5; border-radius:14px; padding:18px;
+                   margin-bottom:14px; text-align:center; }
+  .btn-log-symptoms { display:block; background:#c2185b; color:#fff; text-align:center;
+                      padding:12px; border-radius:50px; font-size:14px; font-weight:600;
+                      text-decoration:none; margin-bottom:10px; transition:all .3s; }
+  .btn-log-symptoms:hover { background:#880e4f; }
+  .btn-period-end { width:100%; background:#fff; color:#c2185b; border:1.5px solid #c2185b;
+                    padding:11px; border-radius:50px; font-size:13px; font-weight:600;
+                    cursor:pointer; transition:all .3s; }
+  .btn-period-end:hover { background:#fce4ec; }
+  .btn-period-start { width:100%; background:linear-gradient(135deg,#c2185b,#e91e8c);
+                      color:#fff; border:none; padding:13px; border-radius:50px;
+                      font-size:14px; font-weight:600; cursor:pointer; transition:all .3s; }
+  .btn-period-start:hover { opacity:.85; }
+  .prediction-card { background:#fff0f6; border:1.5px solid #f8bbd0;
+                     border-radius:14px; padding:18px; margin-bottom:12px; }
+  .prediction-empty { background:#f9f9f9; border-radius:14px; padding:18px;
+                      text-align:center; margin-bottom:12px; }
+
+  /* Score band */
+  .score-band-wrap { margin:8px 0 6px; }
+  .score-band { height:8px; background:#f0f0f0; border-radius:50px; overflow:hidden; margin-bottom:4px; }
+  .score-band-fill { height:100%; border-radius:50px; transition:width .6s ease; }
+  .score-band-labels { display:flex; justify-content:space-between; font-size:9px; font-weight:600; }
+
+  /* Quick stats */
+  .quick-stat-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:4px; }
+  .quick-stat { background:#fff0f6; border-radius:12px; padding:12px 14px; text-align:center; }
+  .quick-stat-label { font-size:10px; font-weight:600; color:#aaa; text-transform:uppercase;
+                      letter-spacing:.8px; margin-bottom:4px; }
+  .quick-stat-value { font-family:'Playfair Display',serif; font-size:20px;
+                      font-weight:700; color:#c2185b; line-height:1; }
+
+  /* Formula box */
+  .formula-box { background:linear-gradient(135deg,#fff0f6,#fce4ec);
+                 border:1.5px solid #f8bbd0; border-radius:14px; padding:14px 16px; text-align:center; }
+  .formula-title { font-size:10px; font-weight:600; color:#c2185b; text-transform:uppercase;
+                   letter-spacing:1px; margin-bottom:4px; }
+  .formula-text { font-family:'Playfair Display',serif; font-size:20px; color:#880e4f;
+                  font-weight:700; margin-bottom:6px; }
+  .formula-sub { font-size:10px; color:#aaa; line-height:1.5; }
+
+  /* Cycle intelligence */
+  .intel-row { display:flex; justify-content:space-between; align-items:center;
+               padding:8px 0; border-bottom:1px solid #f5f5f5; }
+  .intel-label { font-size:13px; color:#888; }
+  .intel-val { font-size:14px; font-weight:600; color:#2d2d2d; }
+  .intel-val.text-warn { color:#e65100; }
+
+  /* Charts */
+  .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:4px; }
+
+  /* Banners */
+  .reminder-banner { grid-column:span 2; background:#fff8e1; border:1.5px solid #ffd54f;
+                     border-radius:16px; padding:16px 22px; display:flex;
+                     align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+  .reminder-btn { background:#e65100; color:#fff; padding:10px 22px; border-radius:50px;
+                  font-size:13px; font-weight:600; text-decoration:none; transition:all .3s; }
+  .reminder-btn:hover { background:#bf360c; }
+  .pattern-warning { grid-column:span 2; background:#fce4ec; border:1.5px solid #f48fb1;
+                     border-radius:16px; padding:16px 22px; display:flex;
+                     align-items:center; gap:12px; }
+
+  /* Cycle row */
+  .cycle-row { display:flex; align-items:center; justify-content:space-between;
+               padding:12px 16px; background:#fff8fb; border-radius:12px;
+               border-left:4px solid #f48fb1; }
+  .cycle-label-badge { padding:3px 10px; border-radius:50px; font-size:12px; font-weight:600; }
+  .badge-green  { background:#e8f5e9; color:#2e7d32; }
+  .badge-orange { background:#fff3e0; color:#e65100; }
+  .badge-red    { background:#fdecea; color:#b71c1c; }
+
+  /* Sensor */
+  @keyframes popIn { 0%{transform:scale(.85);opacity:0}70%{transform:scale(1.05)}100%{transform:scale(1);opacity:1} }
+  .value-updated { animation:popIn .4s cubic-bezier(.4,0,.2,1) forwards; }
+  .sensor-error { font-size:15px; color:rgba(255,255,255,.6); font-style:italic; }
+
+  /* Calendar */
+  .cal-grid   { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; text-align:center; }
+  .cal-header { font-size:9px; font-weight:700; color:#aaa; padding:3px 0; }
+  .cal-day    { width:26px; height:26px; border-radius:50%; display:flex; align-items:center;
+                justify-content:center; font-size:10px; font-weight:500; color:#444; margin:auto; }
+  .cal-day.period  { background:#c2185b; color:#fff; }
+  .cal-day.logged  { background:#f48fb1; color:#fff; }
+  .cal-day.today   { border:2px solid #c2185b; font-weight:700; }
+  .cal-day.empty   { opacity:0; pointer-events:none; }
+  .cal-month  { font-size:11px; font-weight:700; color:#c2185b; text-align:center; margin-bottom:6px; }
+
+  /* Cycle row clickable */
+  .cycle-row-clickable { transition:all .2s; }
+  .cycle-row-clickable:hover { transform:translateX(4px);
+                                box-shadow:0 4px 16px rgba(194,24,91,.1); }
+
+  /* Cycle log modal */
+  .clm-stat { background:#fff8fb; border-radius:12px; padding:12px 14px; text-align:center;
+               border:1px solid #fce4ec; }
+  .clm-stat-val   { font-family:'Playfair Display',serif; font-size:20px;
+                     font-weight:700; color:#c2185b; line-height:1; margin-bottom:3px; }
+  .clm-stat-label { font-size:10px; color:#aaa; font-weight:600;
+                     text-transform:uppercase; letter-spacing:.6px; }
+
+  /* Daily log entry in modal */
+  .log-entry { border-radius:14px; padding:14px 16px; margin-bottom:10px;
+                border-left:4px solid #f48fb1; background:#fff8fb; }
+  .log-entry.log-mild     { border-left-color:#43a047; background:#f9fbe7; }
+  .log-entry.log-moderate { border-left-color:#fb8c00; background:#fff8e1; }
+  .log-entry.log-severe   { border-left-color:#e53935; background:#fff5f5; }
+  .log-entry.log-critical { border-left-color:#880e4f; background:#fce4ec; }
+  .log-entry-header { display:flex; justify-content:space-between;
+                       align-items:center; margin-bottom:10px; }
+  .log-day-badge { font-size:12px; font-weight:700; color:#fff;
+                    background:#c2185b; border-radius:50px; padding:3px 10px; }
+  .log-score-pill { font-size:12px; font-weight:600; padding:3px 10px;
+                     border-radius:50px; }
+  .log-score-mild     { background:#e8f5e9; color:#2e7d32; }
+  .log-score-moderate { background:#fff3e0; color:#e65100; }
+  .log-score-severe   { background:#fdecea; color:#b71c1c; }
+  .log-score-critical { background:#880e4f; color:#fff; }
+
+  /* Symptom bars */
+  .sym-row   { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .sym-label { font-size:11px; color:#888; width:62px; flex-shrink:0; }
+  .sym-bar-wrap { flex:1; height:6px; background:#f0f0f0; border-radius:50px; overflow:hidden; }
+  .sym-bar-fill { height:100%; border-radius:50px; transition:width .5s ease; }
+  .sym-val   { font-size:11px; font-weight:600; width:14px; text-align:right;
+                flex-shrink:0; color:#888; }
+
+  /* ═══════════════════ NEARBY DOCTORS ════════════════════ */
+  .doctor-card { display:flex; align-items:center; gap:14px; padding:14px 16px;
+                  background:#fff8fb; border-radius:14px; border:1.5px solid #fce4ec;
+                  cursor:pointer; transition:all .25s; margin-bottom:10px;
+                  position:relative; }
+  .doctor-card:hover { background:#fce4ec; border-color:#f48fb1;
+                        transform:translateX(4px); box-shadow:0 4px 16px rgba(194,24,91,.1); }
+  .doctor-card:last-child { margin-bottom:0; }
+  .doctor-avatar { font-size:32px; flex-shrink:0; width:48px; height:48px;
+                    display:flex; align-items:center; justify-content:center;
+                    background:#fff; border-radius:50%; border:2px solid #f8bbd0; }
+  .doctor-info   { flex:1; }
+  .doctor-name   { font-size:15px; font-weight:700; color:#2d2d2d; margin-bottom:6px; }
+  .doctor-tags   { display:flex; flex-wrap:wrap; gap:5px; }
+  .doctor-tag    { font-size:11px; font-weight:500; background:#f5f5f5; color:#666;
+                    padding:3px 9px; border-radius:50px; }
+  .tag-online    { background:#e8f5e9 !important; color:#2e7d32 !important; }
+  .tag-hours     { background:#fff3e0 !important; color:#e65100 !important; }
+  .tag-emergency { background:#fdecea !important; color:#b71c1c !important; }
+  .doctor-arrow  { font-size:22px; color:#f48fb1; font-weight:300; margin-left:4px; }
+
+  /* Doctor modal details */
+  .doc-detail-row   { display:flex; align-items:flex-start; gap:12px;
+                       padding:12px 0; border-bottom:1px solid #f5f5f5; }
+  .doc-detail-row:last-of-type { border-bottom:none; }
+  .doc-detail-icon  { font-size:18px; flex-shrink:0; width:26px; text-align:center;
+                       margin-top:1px; }
+  .doc-detail-label { font-size:10px; font-weight:700; color:#c2185b;
+                       text-transform:uppercase; letter-spacing:.8px; margin-bottom:4px; }
+  .doc-detail-value { font-size:13px; color:#444; line-height:1.6; }
+  .doc-service-item { display:flex; align-items:center; gap:6px; font-size:13px;
+                       color:#444; margin-bottom:4px; }
+  .call-btn-primary { display:flex; align-items:center; justify-content:center; gap:8px;
+                       background:linear-gradient(135deg,#c2185b,#e91e8c); color:#fff;
+                       text-decoration:none; padding:13px 20px; border-radius:50px;
+                       font-size:14px; font-weight:600; transition:all .3s;
+                       font-family:'DM Sans',sans-serif; }
+  .call-btn-primary:hover { opacity:.85; }
+  .call-btn-secondary { display:flex; align-items:center; justify-content:center; gap:8px;
+                          background:#fff0f6; color:#c2185b; border:1.5px solid #f8bbd0;
+                          text-decoration:none; padding:12px 20px; border-radius:50px;
+                          font-size:14px; font-weight:600; transition:all .3s;
+                          font-family:'DM Sans',sans-serif; }
+  .call-btn-secondary:hover { background:#fce4ec; }
+  .call-btn-justdial { display:flex; align-items:center; justify-content:center; gap:8px;
+                        background:#ff6820; color:#fff; text-decoration:none;
+                        padding:13px 20px; border-radius:50px; font-size:14px;
+                        font-weight:600; transition:all .3s; font-family:'DM Sans',sans-serif; }
+  .call-btn-justdial:hover { opacity:.85; }
+
+  /* ═══════════════════ SENSOR READING MODAL ══════════════════ */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55);
+                   display:flex; align-items:center; justify-content:center;
+                   z-index:9999; padding:20px; backdrop-filter:blur(3px); }
+  .modal-box { background:#fff; border-radius:24px; padding:36px 32px;
+               max-width:460px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,.2);
+               animation:modalIn .3s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes modalIn { from{transform:scale(.85) translateY(20px);opacity:0}
+                       to{transform:scale(1) translateY(0);opacity:1} }
+  .modal-title { font-family:'Playfair Display',serif; font-size:22px;
+                  font-weight:700; color:#c2185b; text-align:center; margin:0 0 8px; }
+  .modal-sub   { font-size:13px; color:#888; text-align:center; line-height:1.6; margin:0 0 18px; }
+  .modal-tips  { display:flex; flex-direction:column; gap:8px; margin-bottom:4px; }
+  .modal-tip   { background:#fff8fb; border-radius:10px; padding:9px 14px;
+                  font-size:13px; color:#444; border-left:3px solid #f48fb1; }
+  .modal-btn-primary { background:linear-gradient(135deg,#c2185b,#e91e8c); color:#fff;
+                        border:none; padding:13px 22px; border-radius:50px;
+                        font-size:14px; font-weight:600; cursor:pointer;
+                        font-family:'DM Sans',sans-serif; transition:all .3s; }
+  .modal-btn-primary:hover { opacity:.85; }
+  .modal-btn-secondary { background:#fff0f6; color:#c2185b; border:1.5px solid #f8bbd0;
+                          padding:13px 22px; border-radius:50px; font-size:14px;
+                          font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif;
+                          transition:all .3s; }
+  .modal-btn-secondary:hover { background:#fce4ec; }
+  .modal-btn-cancel { background:#f5f5f5; color:#aaa; border:none; padding:13px 18px;
+                       border-radius:50px; font-size:13px; font-weight:500;
+                       cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .3s; }
+  .modal-btn-cancel:hover { background:#eee; color:#666; }
+  .reading-progress-wrap { background:#f0f0f0; border-radius:50px; height:10px;
+                            overflow:hidden; margin-bottom:8px; }
+  .reading-progress-bar  { height:100%; background:linear-gradient(90deg,#f48fb1,#c2185b);
+                            border-radius:50px; width:0%; transition:width .9s ease; }
+  .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
+  .result-item { background:#fff8fb; border-radius:12px; padding:14px 16px;
+                  border:1px solid #fce4ec; text-align:center; }
+  .result-label { font-size:11px; font-weight:600; color:#c2185b; text-transform:uppercase;
+                   letter-spacing:.8px; margin-bottom:6px; }
+  .result-val  { font-family:'Playfair Display',serif; font-size:24px;
+                  font-weight:700; color:#880e4f; line-height:1; }
+  .result-unit { font-size:11px; color:#bbb; margin-top:3px; }
+
+  @media(max-width:500px) {
+    .modal-box { padding:24px 18px; }
+    .result-grid { grid-template-columns:1fr; }
+    .modal-btn-primary, .modal-btn-secondary, .modal-btn-cancel { width:100%; margin-bottom:6px; }
+  }
+  @media (max-width: 768px) {
+    .stat-strip { flex-direction:column; border-radius:16px; }
+    .stat-strip-item { border-right:none; border-bottom:1px solid #f5f5f5; border-radius:0 !important; }
+    .stat-strip-item:first-child { border-radius:16px 16px 0 0 !important; }
+    .stat-strip-item:last-child  { border-radius:0 0 16px 16px !important; border-bottom:none; }
+
+    .dashboard-grid { grid-template-columns:1fr !important; padding:0 16px !important; gap:14px !important; }
+    [style*="grid-column:span 2"] { grid-column:span 1 !important; }
+
+    .phase-card { grid-template-columns:1fr !important; }
+    .phase-phases { justify-content:flex-start; }
+    .period-tracker-grid { grid-template-columns:1fr !important; }
+    .charts-grid { grid-template-columns:1fr !important; }
+    .quick-stat-row { grid-template-columns:1fr 1fr; }
+
+    .header { padding:12px 16px !important; }
+    .header .logo span { display:none; }
+    .awareness { padding:30px 16px !important; }
+    .awareness h1 { font-size:26px !important; }
+    .illustrations { gap:12px !important; }
+    .illustrations img { width:48px !important; height:48px !important; }
+
+    .sensor-card { flex-direction:column !important; }
+    .sensor-divider { width:100% !important; height:1px !important; }
+
+    .notifications-wrap { padding:0 16px; }
+    .reminder-banner { flex-direction:column; align-items:flex-start; }
+    .reminder-btn { width:100%; text-align:center; }
+
+    .article-container { grid-template-columns:1fr !important; }
+  }
+
+  @media (max-width: 480px) {
+    .stat-strip-item { padding:12px 14px; }
+    .phase-step { min-width:50px; padding:6px 8px; font-size:11px; }
+    .btn-period-start, .btn-period-end, .btn-log-symptoms { font-size:13px; padding:11px; }
+    .history-table { font-size:11px; }
+    .dash-card { padding:18px 16px !important; }
+  }
+
+
+  /* ── Knowledge Hub ───────────────────────────── */
+  section.articles { max-width:1200px; margin:0 auto 60px; padding:60px 28px 0; }
+  .hub-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
+  .hub-card { background:#fff; border-radius:22px; padding:24px 22px 20px;
+              border:1.5px solid #f0e0ea; box-shadow:0 4px 20px rgba(194,24,91,.06);
+              transition:transform .3s,box-shadow .3s; display:flex; flex-direction:column; gap:10px; }
+  .hub-card:hover { transform:translateY(-5px); box-shadow:0 12px 36px rgba(194,24,91,.13); }
+  .hub-card h3 { font-family:'Playfair Display',serif; font-size:17px; font-weight:700;
+                  color:#2d2d2d; margin:0; line-height:1.35; }
+  .hub-card p { font-size:13px; color:#777; line-height:1.65; margin:0; }
+  .hub-card-top { display:flex; align-items:center; justify-content:space-between; }
+  .hub-icon-wrap { width:48px; height:48px; border-radius:14px; display:flex;
+                    align-items:center; justify-content:center; font-size:24px; }
+  .hub-tag { font-size:10px; font-weight:700; text-transform:uppercase;
+              letter-spacing:1px; padding:4px 12px; border-radius:50px; }
+  .hub-tip { background:#fffbf0; border:1px solid #ffe082; border-radius:10px;
+              padding:10px 12px; font-size:12px; color:#5d4037; line-height:1.5; margin-top:4px; }
+  .hub-pills { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0; }
+  .hub-pills span { padding:5px 11px; border-radius:20px; font-size:11px; font-weight:600; }
+  .hub-food-list { display:flex; flex-direction:column; gap:6px; }
+  .hub-food-row { display:flex; align-items:center; justify-content:space-between;
+                   background:#fafafa; border-radius:9px; padding:7px 10px; font-size:12px; color:#444; }
+  .hub-food-badge { padding:3px 9px; border-radius:12px; font-size:10px; font-weight:700; }
+  .hub-vitals-list { display:flex; flex-direction:column; gap:10px; }
+  .hub-vital-row { display:flex; align-items:flex-start; gap:12px; background:#fafafa;
+                    border-radius:12px; padding:10px 12px; font-size:12px; color:#555; line-height:1.5; }
+  .hub-vital-icon { width:36px; height:36px; border-radius:10px; display:flex;
+                     align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .hub-check-row { background:#f9f9f9; border-radius:9px; padding:8px 12px;
+                    font-size:12px; color:#444; line-height:1.5; margin-bottom:4px; }
+  .hub-warn-box { background:#fdecea; border:1px solid #ef9a9a; border-radius:12px;
+                   padding:12px 14px; font-size:12px; color:#b71c1c; line-height:1.6; margin:6px 0; }
+  @media(max-width:1024px){ .hub-grid { grid-template-columns:1fr 1fr; } }
+  @media(max-width:640px) { .hub-grid { grid-template-columns:1fr; }
+    section.articles { padding:40px 16px 0; } }
+
+  /* ── Dark Mode ───────────────────────────────── */
+  body.dark-mode { background:#121212 !important; color:#e0e0e0 !important; }
+  body.dark-mode .dash-card { background:#1e1e1e !important; border-color:#333 !important; color:#e0e0e0 !important; }
+  body.dark-mode .dash-card-title { color:#f48fb1 !important; }
+  body.dark-mode .profile-label { color:#aaa !important; }
+  body.dark-mode .profile-value { color:#e0e0e0 !important; }
+  body.dark-mode .history-table th { background:#2d2d2d !important; color:#f48fb1 !important; }
+  body.dark-mode .history-table td { color:#e0e0e0 !important; border-color:#333 !important; }
+  body.dark-mode .history-table tr:nth-child(even) { background:#252525 !important; }
+  body.dark-mode .stat-strip { background:#1a1a1a !important; border-color:#333 !important; }
+  body.dark-mode .stat-strip-val { color:#f48fb1 !important; }
+  body.dark-mode .stat-strip-label { color:#aaa !important; }
+  body.dark-mode .notif-banner { filter:brightness(.85); }
+  body.dark-mode .modal-box { background:#1e1e1e !important; color:#e0e0e0 !important; }
+  body.dark-mode .modal-title { color:#f48fb1 !important; }
+  body.dark-mode .modal-sub { color:#aaa !important; }
+  body.dark-mode .result-item { background:#252525 !important; }
+  body.dark-mode .result-label { color:#aaa !important; }
+  body.dark-mode .q-card { background:#1e1e1e !important; color:#e0e0e0 !important; }
+  body.dark-mode input, body.dark-mode select, body.dark-mode textarea {
+    background:#2d2d2d !important; color:#e0e0e0 !important; border-color:#444 !important;
+  }
+  body.dark-mode .empty-state { color:#666 !important; }
+  body.dark-mode .awareness { background:linear-gradient(135deg,#1a0010,#2d0030) !important; }
+  body.dark-mode .cycle-timeline-row:hover { background:#2a2a2a !important; }
+  body.dark-mode .bmr-badge.normal { background:#1b5e20 !important; color:#c8e6c9 !important; }
+  body.dark-mode .article-container .article-card { background:#1e1e1e !important; border-color:#333 !important; }
+</style>
+
+
+<!-- ══════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════ -->
+<script>
+  // ── Dark Mode ─────────────────────────────────
+  (function(){
+    if(localStorage.getItem('gh_dark')==='1') document.body.classList.add('dark-mode');
+  })();
+  function toggleDarkMode(){
+    var d = document.body.classList.toggle('dark-mode');
+    localStorage.setItem('gh_dark', d?'1':'0');
+    document.getElementById('darkBtn').textContent = d ? '☀️ Light' : '🌙 Dark';
+  }
+  document.addEventListener('DOMContentLoaded',function(){
+    if(document.body.classList.contains('dark-mode'))
+      document.getElementById('darkBtn').textContent='☀️ Light';
+  });
+
+  // ── Session Timeout (15 min) ──────────────────
+  var _lastAct = Date.now();
+  document.addEventListener('mousemove',function(){_lastAct=Date.now();});
+  document.addEventListener('keydown',function(){_lastAct=Date.now();});
+  setInterval(function(){
+    if(Date.now()-_lastAct > 15*60*1000){
+      fetch('/api/keepalive',{method:'POST'}).then(function(r){
+        if(r.status===401){ window.location.href='/login'; }
+      });
+    }
+  }, 60000);
+
+  // ── Vitals Trend Charts (load on demand) ──────
+  function loadVitalsTrend(){
+    fetch('/api/vitals-trend')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.labels || d.labels.length===0) return;
+        document.getElementById('vitalsTrendCard').style.display='block';
+
+        function numericOnly(arr){
+          return arr.map(function(v){return isNaN(parseFloat(v))?null:parseFloat(v);});
+        }
+        function makeChart(id, label, data, color){
+          var ctx = document.getElementById(id);
+          if(!ctx) return;
+          new Chart(ctx, { type:'line', data:{
+            labels: d.labels,
+            datasets:[{ label:label, data:data, borderColor:color,
+              backgroundColor:color+'22', tension:.4, pointRadius:3,
+              borderWidth:2, fill:true, spanGaps:true }]
+          }, options:{
+            responsive:true, maintainAspectRatio:false,
+            plugins:{legend:{display:false}},
+            scales:{x:{ticks:{font:{size:9},maxTicksLimit:6}},
+                    y:{ticks:{font:{size:9}}}}
+          }});
+        }
+        makeChart('bpmChart',  'BPM',  numericOnly(d.bpm),  '#e91e63');
+        makeChart('spo2Chart', 'SpO2', numericOnly(d.spo2), '#1565c0');
+        makeChart('tempChart', 'Temp', numericOnly(d.temp), '#e65100');
+        makeChart('bmrChart',  'BMR',  numericOnly(d.bmr),  '#2e7d32');
+      });
+  }
+  setTimeout(loadVitalsTrend, 4000);
+
+  // ── Sensor polling (auto, every 3s; saves every 30s) ────────────────────
+  var _sensorPollCount = 0;
+  setTimeout(startSensor, 3000);
+  function startSensor() { fetchSensor(); setInterval(fetchSensor, 3000); }
+  function fetchSensor() {
+    _sensorPollCount++;
+    // Save on 1st reading, then every 10th poll (~30 s) to avoid DB flood
+    var save = (_sensorPollCount === 1 || _sensorPollCount % 10 === 0);
+    var url = save ? '/sensor?save=1' : '/sensor';
+    fetch(url)
+      .then(function(r) { if(!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(d) { if(d.error){ showSensorError(d.error); return; } updateSensor(d); })
+      .catch(function()  { showSensorError('Unable to reach sensor. Retrying…'); });
+  }
+
+  function updateSensor(d) {
+    // Update the 3 vitals tiles
+    var bpmEl  = document.getElementById('bpmVal');
+    var spo2El = document.getElementById('spo2Val');
+    var tempEl = document.getElementById('tempVal');
+    var bmrEl  = document.getElementById('bmr');
+
+    if(bpmEl)  { bpmEl.textContent  = (d.bpm  && d.bpm  !== '—') ? d.bpm  : '—'; triggerPop(bpmEl); }
+    if(spo2El) { spo2El.textContent = (d.spo2 && d.spo2 !== '—') ? d.spo2 : '—'; triggerPop(spo2El); }
+    if(tempEl) { tempEl.textContent = (d.temperature && d.temperature !== '—') ? d.temperature : '—'; triggerPop(tempEl); }
+    if(bmrEl)  { bmrEl.textContent  = d.bmr;  triggerPop(bmrEl); }
+
+    // Update BMR strip in stat bar
+    var strip = document.getElementById('bmrStrip');
+    if(strip) strip.textContent = d.bmr;
+
+    // Status pill
+    var sw  = document.getElementById('statusWrap');
+    var msg = document.getElementById('vitalsAlert');
+    var vs  = d.v_status || d.bmr_status || 'unknown';
+    var pc, pi, pt, mt;
+
+    if(vs === 'good') {
+      pc='good'; pi='✅'; pt='All Vitals Normal';
+      mt='Your heart rate, oxygen, and temperature are all within healthy ranges.';
+    } else if(vs === 'warning') {
+      pc='bad'; pi='⚠️'; pt='Vitals Need Attention';
+      mt='One or more vitals are outside normal range. Consider consulting a doctor.';
+    } else if(d.bmr_status === 'high') {
+      pc='bad'; pi='⚠️'; pt='BMR High';
+      mt='Your BMR is above normal. Consider consulting a healthcare professional.';
+    } else if(d.bmr_status === 'low') {
+      pc='bad'; pi='⚠️'; pt='BMR Low';
+      mt='Your BMR is below normal. Please consult a nearby doctor.';
+    } else {
+      pc=''; pi='💓'; pt='Reading…';
+      mt='Sensor is reading your vitals.';
+    }
+
+    if(sw) sw.innerHTML = '<span class="status-pill '+pc+'"><span class="status-dot"></span>'+pi+' '+pt+'</span>';
+    if(msg) { msg.textContent = mt; msg.style.display = 'block'; }
+
+    // Colour-code the vitals tiles based on values
+    colourVitalTile('bpmVal',  parseFloat(d.bpm),         60, 100);
+    colourVitalTile('spo2Val', parseFloat(d.spo2),        94, 100);
+    colourVitalTile('tempVal', parseFloat(d.temperature), 36.1, 37.5);
+  }
+
+  function colourVitalTile(id, val, low, high) {
+    var el = document.getElementById(id);
+    if(!el || isNaN(val)) return;
+    el.style.color = (val >= low && val <= high) ? '#a5f3a5' : '#ffb3b3';
+  }
+
+  function showSensorError(m) {
+    ['bpmVal','spo2Val','tempVal','bmr'].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.innerHTML = '<span class="sensor-error">—</span>';
+    });
+    var msg = document.getElementById('vitalsAlert');
+    if(msg) { msg.textContent = '⚠️ ' + m; msg.style.display = 'block'; }
+  }
+
+  function triggerPop(el) {
+    el.classList.remove('value-updated'); void el.offsetWidth; el.classList.add('value-updated');
+  }
+
+  // ── New Reading Modal ─────────────────────────
+  var readingTimer   = null;
+  var readingSamples = [];
+  var READING_SECS   = 10;
+  var SAMPLE_EVERY   = 2500;
+
+  function openReadingModal() {
+    readingSamples = [];
+    showStep(1);
+    document.getElementById('readingModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    clearInterval(readingTimer);
+    readingTimer = null;
+    document.getElementById('readingModal').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  function showStep(n) {
+    [1,2,3,4].forEach(function(i){
+      var el = document.getElementById('step'+i);
+      if(el) el.style.display = (i===n) ? 'block' : 'none';
+    });
+  }
+
+  function startReading() {
+    showStep(2);
+    readingSamples = [];
+    var secsLeft = READING_SECS;
+    var bar      = document.getElementById('progressBar');
+    var num      = document.getElementById('countdownNum');
+    var status   = document.getElementById('readingStatus');
+    var log      = document.getElementById('sampleLog');
+    var icon     = document.getElementById('countdownIcon');
+    log.innerHTML = '';
+    bar.style.width = '0%';
+
+    var ticker = setInterval(function() {
+      secsLeft--;
+      num.textContent = secsLeft;
+      bar.style.width = ((READING_SECS - secsLeft) / READING_SECS * 100) + '%';
+      if(secsLeft <= 3) icon.textContent = '⚡';
+      if(secsLeft <= 0) { clearInterval(ticker); clearInterval(sampler); showResult(); }
+    }, 1000);
+
+    var sampleNum = 0;
+    var sampler = setInterval(function() {
+      sampleNum++;
+      status.textContent = 'Taking sample ' + sampleNum + '…';
+      fetch('/sensor/sample')
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          readingSamples.push(d);
+          // Update live tiles
+          document.getElementById('liveBpm').textContent  = d.bpm  || '—';
+          document.getElementById('liveSpo2').textContent = d.spo2 || '—';
+          document.getElementById('liveTemp').textContent = d.temperature || '—';
+          // Append to log
+          log.innerHTML += '<span style="color:#c2185b;font-weight:600;">Sample '+sampleNum+'</span>'
+            + '  ❤️ ' + (d.bpm || '—') + ' BPM'
+            + '  🩸 ' + (d.spo2 || '—') + '%'
+            + '  🌡️ ' + (d.temperature || '—') + '°C'
+            + '  🔥 BMR: <strong>' + d.bmr + '</strong><br>';
+          log.scrollTop = log.scrollHeight;
+        })
+        .catch(function(){
+          log.innerHTML += '<span style="color:#bbb;">Sample '+sampleNum+' — sensor not responding</span><br>';
+        });
+    }, SAMPLE_EVERY);
+
+    readingTimer = { ticker: ticker, sampler: sampler };
+    setTimeout(function(){ clearInterval(ticker); clearInterval(sampler); }, (READING_SECS + 1) * 1000);
+  }
+
+  function showResult() {
+    if(readingSamples.length === 0) {
+      readingSamples.push({bpm:'—', spo2:'—', temperature:'—', bmr:'0'});
+    }
+    showStep(3);
+
+    // Average numeric vitals
+    function avgField(field) {
+      var vals = readingSamples.map(function(s){ return parseFloat(s[field]); })
+                               .filter(function(v){ return !isNaN(v); });
+      return vals.length > 0
+        ? (vals.reduce(function(a,b){return a+b;},0) / vals.length).toFixed(1)
+        : '—';
+    }
+
+    var avgBpm  = avgField('bpm');
+    var avgSpo2 = avgField('spo2');
+    var avgTemp = avgField('temperature');
+    var avgBmr  = avgField('bmr');
+
+    document.getElementById('resultBpm').textContent    = avgBpm;
+    document.getElementById('resultSpo2').textContent   = avgSpo2;
+    document.getElementById('resultTemp').textContent   = avgTemp;
+    document.getElementById('resultBmr').textContent    = avgBmr;
+    document.getElementById('sampleCount').textContent  = readingSamples.length;
+
+    // Status based on vitals
+    var bpmNum  = parseFloat(avgBpm);
+    var spo2Num = parseFloat(avgSpo2);
+    var tempNum = parseFloat(avgTemp);
+    var bmrNum  = parseFloat(avgBmr);
+
+    var statusHtml, msg, msgBg;
+    var hasWarning = (!isNaN(spo2Num) && spo2Num < 94) ||
+                     (!isNaN(bpmNum)  && (bpmNum < 50 || bpmNum > 110)) ||
+                     (!isNaN(tempNum) && tempNum > 38.0);
+
+    if(hasWarning) {
+      statusHtml = '<span class="status-pill bad"><span class="status-dot"></span>⚠️ Needs Attention</span>';
+      msg   = '⚠️ One or more vitals are outside the normal range. Consider consulting a doctor.';
+      msgBg = '#fdecea';
+    } else if(!isNaN(bmrNum) && bmrNum > 2500) {
+      statusHtml = '<span class="status-pill bad"><span class="status-dot"></span>⚠️ BMR High</span>';
+      msg   = '⚠️ BMR is above the normal range. Consider consulting a healthcare professional.';
+      msgBg = '#fff3e0';
+    } else if(!isNaN(bmrNum) && bmrNum < 1200) {
+      statusHtml = '<span class="status-pill bad"><span class="status-dot"></span>⚠️ BMR Low</span>';
+      msg   = '⚠️ BMR is below the normal range. Please consult a nearby doctor.';
+      msgBg = '#fff3e0';
+    } else {
+      statusHtml = '<span class="status-pill good"><span class="status-dot"></span>✅ All Normal</span>';
+      msg   = '🌿 Heart rate, oxygen, and temperature are all within healthy ranges!';
+      msgBg = '#e8f5e9';
+    }
+
+    document.getElementById('resultStatus').innerHTML = statusHtml;
+    var rm = document.getElementById('resultMsg');
+    rm.textContent = msg;
+    rm.style.background = msgBg;
+
+    window._pendingReading = { bpm: avgBpm, spo2: avgSpo2, temperature: avgTemp, bmr: avgBmr };
+  }
+
+  function saveReading() {
+    if(!window._pendingReading) return;
+    fetch('/sensor/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(window._pendingReading)
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.success) {
+        showStep(4);
+        updateSensor(Object.assign({}, window._pendingReading, {
+          v_status: 'good', bmr_status: 'normal',
+          bmr: parseFloat(window._pendingReading.bmr)
+        }));
+        window._pendingReading = null;
+      } else {
+        alert('Failed to save: ' + (d.error || 'Unknown error'));
+      }
+    })
+    .catch(function(){ alert('Save failed. Please try again.'); });
+  }
+
+  function retakeReading() {
+    readingSamples = [];
+    window._pendingReading = null;
+    showStep(1);
+  }
+
+  // ── Cycle Log Detail Modal ───────────────────
+  var SYM_LABELS = ['Cramps','Fatigue','Bleeding','Mood','Impact'];
+  var SYM_COLORS = ['#c2185b','#e91e8c','#880e4f','#9c27b0','#f48fb1'];
+
+  function openCycleLog(cycleId, row) {
+    // Show modal immediately with header from data attributes
+    var label      = row.dataset.label;
+    var start      = row.dataset.start;
+    var end        = row.dataset.end;
+    var avg        = parseFloat(row.dataset.avg || 0);
+    var worstDay   = row.dataset.worst;
+    var worstScore = row.dataset.worstScore;
+    var bestDay    = row.dataset.best;
+
+    document.getElementById('clmTitle').textContent =
+      '📅 ' + start + '  →  ' + end;
+    document.getElementById('clmMeta').textContent =
+      'Avg Score: ' + avg.toFixed(1) + '  ·  Overall: ' + (label || '—');
+
+    // Overview stats
+    var labelColor = label==='Mild' ? '#43a047' :
+                     label==='Moderate' ? '#fb8c00' :
+                     label==='Severe'   ? '#e53935' : '#c2185b';
+    document.getElementById('clmStats').innerHTML =
+      '<div class="clm-stat">' +
+        '<div class="clm-stat-val" style="color:' + labelColor + ';">' + (label||'—') + '</div>' +
+        '<div class="clm-stat-label">Overall</div>' +
+      '</div>' +
+      '<div class="clm-stat">' +
+        '<div class="clm-stat-val">Day ' + (worstDay||'—') + '</div>' +
+        '<div class="clm-stat-label">Worst Day</div>' +
+      '</div>' +
+      '<div class="clm-stat">' +
+        '<div class="clm-stat-val">Day ' + (bestDay||'—') + '</div>' +
+        '<div class="clm-stat-label">Best Day</div>' +
+      '</div>';
+
+    // Show modal, hide logs, show loading
+    document.getElementById('cycleLogModal').style.display = 'flex';
+    document.getElementById('clmLoading').style.display = 'block';
+    document.getElementById('clmLogs').style.display = 'none';
+    document.getElementById('clmDoctorAlert').style.display = 'none';
+    document.body.style.overflow = 'hidden';
+
+    // Fetch daily logs
+    fetch('/api/cycle/' + cycleId + '/logs')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        document.getElementById('clmLoading').style.display = 'none';
+
+        if(!data.logs || data.logs.length === 0) {
+          document.getElementById('clmLogsList').innerHTML =
+            '<div style="text-align:center;padding:20px;color:#bbb;font-size:13px;">' +
+            'No daily logs recorded for this cycle.</div>';
+          document.getElementById('clmLogs').style.display = 'block';
+          return;
+        }
+
+        var html = '';
+        var hasSevere = false;
+
+        data.logs.forEach(function(log) {
+          var score     = log.score || 0;
+          var analysis  = log.analysis || '';
+          var tip       = log.tip || '';
+          var notes     = log.notes || '';
+          var pain      = log.pain_relief;
+          var qs        = [log.q1, log.q2, log.q3, log.q4, log.q5];
+
+          var cls = score <= 4  ? 'log-mild' :
+                    score <= 9  ? 'log-moderate' :
+                    score <= 12 ? 'log-severe' : 'log-critical';
+          var pillCls = score <= 4  ? 'log-score-mild' :
+                        score <= 9  ? 'log-score-moderate' :
+                        score <= 12 ? 'log-score-severe' : 'log-score-critical';
+
+          if(score >= 10) hasSevere = true;
+
+          // Symptom bars (0-3 scale)
+          var barsHtml = '';
+          qs.forEach(function(val, i) {
+            var pct = ((val||0)/3*100).toFixed(0);
+            var barColor = val===0 ? '#e0e0e0' :
+                           val===1 ? '#81c784' :
+                           val===2 ? '#ffb74d' : '#e53935';
+            var lvl = val===0?'None':val===1?'Mild':val===2?'Mod':'High';
+            barsHtml +=
+              '<div class="sym-row">' +
+                '<div class="sym-label">' + SYM_LABELS[i] + '</div>' +
+                '<div class="sym-bar-wrap">' +
+                  '<div class="sym-bar-fill" style="width:' + pct + '%;background:' + barColor + ';"></div>' +
+                '</div>' +
+                '<div class="sym-val" style="color:' + barColor + ';">' + lvl + '</div>' +
+              '</div>';
+          });
+
+          html +=
+            '<div class="log-entry ' + cls + '">' +
+              '<div class="log-entry-header">' +
+                '<span class="log-day-badge">Day ' + log.day_number + '</span>' +
+                '<span style="font-size:11px;color:#aaa;">' + (log.date||'') + '</span>' +
+                '<span class="log-score-pill ' + pillCls + '">Score: ' + score + ' — ' + analysis + '</span>' +
+              '</div>' +
+
+              barsHtml +
+
+              (pain ?
+                '<div style="margin-top:8px;font-size:12px;color:#6a1b9a;font-weight:500;">' +
+                '💊 Pain relief taken</div>' : '') +
+
+              (notes ?
+                '<div style="margin-top:6px;background:rgba(255,255,255,.6);border-radius:8px;' +
+                'padding:8px 10px;font-size:12px;color:#555;font-style:italic;">' +
+                '📝 ' + notes + '</div>' : '') +
+
+              '<div style="margin-top:8px;font-size:12px;color:#888;line-height:1.5;' +
+              'border-top:1px solid rgba(0,0,0,.05);padding-top:8px;">' +
+              '💡 ' + tip + '</div>' +
+
+            '</div>';
+        });
+
+        document.getElementById('clmLogsList').innerHTML = html;
+        document.getElementById('clmLogs').style.display = 'block';
+
+        // Show doctor referral if any severe day
+        if(hasSevere) {
+          document.getElementById('clmDoctorAlert').style.display = 'block';
+        }
+      })
+      .catch(function() {
+        document.getElementById('clmLoading').innerHTML =
+          '<div style="color:#e53935;font-size:13px;">⚠️ Failed to load logs. Please try again.</div>';
+      });
+  }
+
+  function closeCycleModal() {
+    document.getElementById('cycleLogModal').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  // Backdrop click close
+  document.getElementById('cycleLogModal').addEventListener('click', function(e) {
+    if(e.target === this) closeCycleModal();
+  });
+
+  // ── Nearby Doctors Modal ─────────────────────
+  // ── Nearby Doctors Modal ─────────────────────
+  function openNearbyDoctors() {
+    document.getElementById('nearbyDoctorsModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+  function closeNearbyDoctors() {
+    document.getElementById('nearbyDoctorsModal').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+  document.getElementById('nearbyDoctorsModal').addEventListener('click', function(e) {
+    if(e.target === this) closeNearbyDoctors();
+  });
+
+  var DOCTORS = [
+    {
+      icon: '👩‍⚕️',
+      name: 'Dr. Ankita Singh',
+      title: 'Gynaecologist & Obstetrician',
+      location: 'Hope Diagnostics & Healthcare\nNapit Para, Doctor Lane,\nNear Durgasthan Road, Dumka',
+      hours: null,
+      phones: [
+        { label: 'Primary',   number: '9334239788' },
+        { label: 'Alternate', number: '8986194091' }
+      ],
+      services: [
+        'Pregnancy Management',
+        'High-Risk Pregnancy Cases',
+        'Irregular Period Treatment',
+        'Online Consultations Available 🌐'
+      ],
+      justdial: null
+    },
+    {
+      icon: '👩‍⚕️',
+      name: 'Dr. Rukhsana Yasmin',
+      title: 'Gynaecologist & Obstetrician',
+      location: 'Hindustan Medical\nJail Road, Durga Manda Road, Dumka',
+      hours: '10:00 AM – 7:00 PM',
+      phones: [],
+      services: [
+        'General Gynaecology',
+        'Obstetric Care',
+        'Highly Rated on Justdial'
+      ],
+      justdial: 'https://www.justdial.com'
+    },
+    {
+      icon: '🏥',
+      name: 'Bharati Hospital',
+      title: 'Multi-Speciality Maternity Centre',
+      location: 'Gidhni Pahari Road,\nNear Shiv Pahar Chowk,\nBanderjori, Dumka',
+      hours: null,
+      phones: [
+        { label: 'Hospital', number: '02048562555' }
+      ],
+      services: [
+        'Comprehensive Maternity Services',
+        'Emergency Care',
+        'On-Site Ambulance 🚑',
+        'Multi-Speciality Facility'
+      ],
+      justdial: null
+    }
+  ];
+
+  function openDoctor(idx) {
+    var d = DOCTORS[idx];
+    document.getElementById('docModalIcon').textContent  = d.icon;
+    document.getElementById('docModalName').textContent  = d.name;
+    document.getElementById('docModalTitle').textContent = d.title;
+    document.getElementById('docModalLocation').textContent = d.location;
+
+    // Hours row
+    var hoursRow = document.getElementById('docModalHoursRow');
+    if(d.hours) {
+      hoursRow.style.display = 'flex';
+      document.getElementById('docModalHours').textContent = d.hours;
+    } else {
+      hoursRow.style.display = 'none';
+    }
+
+    // Phones row
+    var phonesEl = document.getElementById('docModalPhones');
+    var phonesRow = document.getElementById('docModalPhonesRow');
+    if(d.phones.length > 0) {
+      phonesRow.style.display = 'flex';
+      phonesEl.innerHTML = d.phones.map(function(p) {
+        return '<div class="doc-detail-value" style="margin-bottom:3px;">'
+          + '<strong>' + p.label + ':</strong> '
+          + p.number.replace(/(\d{5})(\d{5})/, '$1 $2')
+          + '</div>';
+      }).join('');
+    } else {
+      phonesRow.style.display = 'none';
+      phonesEl.innerHTML = '';
+    }
+
+    // Services
+    var svcEl = document.getElementById('docModalServices');
+    svcEl.innerHTML = d.services.map(function(s) {
+      return '<div class="doc-service-item"><span style="color:#c2185b;font-size:14px;">✅</span> ' + s + '</div>';
+    }).join('');
+
+    // Call buttons
+    var btnsEl = document.getElementById('docModalCallBtns');
+    btnsEl.innerHTML = '';
+    if(d.phones.length === 1) {
+      btnsEl.innerHTML += '<a href="tel:' + d.phones[0].number + '" class="call-btn-primary">'
+        + '📞 Call ' + d.name.split(' ').slice(-1)[0] + '</a>';
+    } else if(d.phones.length === 2) {
+      btnsEl.innerHTML += '<a href="tel:' + d.phones[0].number + '" class="call-btn-primary">'
+        + '📞 Call Primary — ' + d.phones[0].number.replace(/(\d{5})(\d{5})/,'$1 $2') + '</a>';
+      btnsEl.innerHTML += '<a href="tel:' + d.phones[1].number + '" class="call-btn-secondary">'
+        + '📞 Alternate — ' + d.phones[1].number.replace(/(\d{5})(\d{5})/,'$1 $2') + '</a>';
+    }
+    if(d.justdial) {
+      btnsEl.innerHTML += '<a href="' + d.justdial + '" target="_blank" class="call-btn-justdial">'
+        + '🔍 Find on Justdial</a>';
+    }
+
+    document.getElementById('doctorModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeDoctorModal() {
+    document.getElementById('doctorModal').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  // Close doctor modal on backdrop click
+  document.getElementById('doctorModal').addEventListener('click', function(e) {
+    if(e.target === this) closeDoctorModal();
+  });
+
+
+  // ── Period start / end ────────────────────────
+  function startPeriod() {
+    fetch('/period/start',{method:'POST'})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var msg=document.getElementById('periodMsg');
+        if(d.success){msg.textContent='🔴 Period started! Refreshing…'; setTimeout(function(){location.reload();},1200);}
+        else{msg.textContent='⚠️ '+d.error;}
+      });
+  }
+  function endPeriod() {
+    if(!confirm('Mark your period as ended today?')) return;
+    fetch('/period/end',{method:'POST'})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var msg=document.getElementById('periodMsg');
+        if(d.success){msg.textContent='✅ Period ended. Refreshing…'; setTimeout(function(){location.reload();},1200);}
+        else{msg.textContent='⚠️ '+d.error;}
+      });
+  }
+
+  // ── Doctor visit delete ───────────────────────
+  function deleteDoctorVisit(id, btn) {
+    if(!confirm('Delete this visit record?')) return;
+    fetch('/doctor_visit/delete/'+id, {method:'POST'})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.success) btn.closest('div[style]').remove();
+      });
+  }
+
+  // ── Calendar ──────────────────────────────────
+  var periodDays  = {{ period_days  | tojson }};
+  var loggedDates = {{ logged_dates | tojson }};
+  function buildCalendar() {
+    var now=new Date(), year=now.getFullYear(), month=now.getMonth();
+    var today=now.toISOString().split('T')[0];
+    var mn=['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var dn=['Mo','Tu','We','Th','Fr','Sa','Su'];
+    var fd=new Date(year,month,1).getDay(); fd=(fd===0)?6:fd-1;
+    var dim=new Date(year,month+1,0).getDate();
+    var h='<div class="cal-month">'+mn[month]+' '+year+'</div><div class="cal-grid">';
+    dn.forEach(function(d){h+='<div class="cal-header">'+d+'</div>';});
+    for(var i=0;i<fd;i++) h+='<div class="cal-day empty"></div>';
+    for(var day=1;day<=dim;day++){
+      var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+      var c='cal-day';
+      if(periodDays.includes(ds)) c+=' period';
+      if(loggedDates.includes(ds)) c+=' logged';
+      if(ds===today) c+=' today';
+      h+='<div class="'+c+'">'+day+'</div>';
+    }
+    h+='</div>';
+    document.getElementById('calendar').innerHTML=h;
+  }
+  buildCalendar();
+
+  // ── Charts ────────────────────────────────────
+  fetch('/api/trends')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      // Cycle score trend
+      var ctx1=document.getElementById('cycleTrendChart');
+      if(ctx1 && data.cycle_labels && data.cycle_labels.length > 0){
+        new Chart(ctx1,{
+          type:'line',
+          data:{
+            labels: data.cycle_labels,
+            datasets:[{
+              label:'Avg Score',
+              data: data.cycle_scores,
+              borderColor:'#c2185b',
+              backgroundColor:'rgba(194,24,91,.08)',
+              borderWidth:2,
+              pointBackgroundColor:'#c2185b',
+              pointRadius:4,
+              tension:0.4,
+              fill:true
+            }]
+          },
+          options:{
+            responsive:true, maintainAspectRatio:false,
+            plugins:{legend:{display:false}},
+            scales:{
+              y:{beginAtZero:true,max:15,
+                 ticks:{font:{size:9}},
+                 grid:{color:'rgba(0,0,0,.05)'}},
+              x:{ticks:{font:{size:8},maxRotation:30},
+                 grid:{display:false}}
+            }
+          }
+        });
+      } else if(ctx1) {
+        ctx1.parentElement.innerHTML='<div style="text-align:center;padding:40px 0;color:#ccc;font-size:12px;">No cycle data yet</div>';
+      }
+
+      // Symptom breakdown bar chart
+      var ctx2=document.getElementById('symptomChart');
+      if(ctx2){
+        new Chart(ctx2,{
+          type:'bar',
+          data:{
+            labels:['Cramps','Fatigue','Bleeding','Mood','Impact'],
+            datasets:[{
+              label:'Avg Score',
+              data: data.symptom_avgs,
+              backgroundColor:[
+                'rgba(194,24,91,.7)',
+                'rgba(244,143,177,.7)',
+                'rgba(136,14,79,.7)',
+                'rgba(233,30,140,.7)',
+                'rgba(248,187,208,.9)',
+              ],
+              borderRadius:6,
+              borderSkipped:false,
+            }]
+          },
+          options:{
+            responsive:true, maintainAspectRatio:false,
+            plugins:{legend:{display:false}},
+            scales:{
+              y:{beginAtZero:true,max:3,
+                 ticks:{font:{size:9},stepSize:1},
+                 grid:{color:'rgba(0,0,0,.05)'}},
+              x:{ticks:{font:{size:9}},grid:{display:false}}
+            }
+          }
+        });
+      }
+    })
+    .catch(function(){
+      // Charts fail silently if no data
+    });
+</script>
+
+</body>
+</html>

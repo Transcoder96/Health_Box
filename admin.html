@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel — GraceHealth</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="admin-body">
+
+<div class="admin-topbar">
+  <div class="admin-topbar-logo">GraceHealth</div>
+  <div class="admin-topbar-right">
+    <span class="admin-badge">🔐 Admin Panel</span>
+    <a href="/logout" class="btn-logout">Logout</a>
+  </div>
+</div>
+
+<div class="admin-content">
+
+  <div class="admin-page-header">
+    <h1>Admin Dashboard</h1>
+    <p>Full control over all users — view profiles, health data, assessment results, and delete records.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="admin-stats" style="grid-template-columns:repeat(4,1fr);">
+    <div class="stat-card">
+      <div class="stat-icon pink">👥</div>
+      <div class="stat-info"><h3>{{ users|length }}</h3><p>Registered Users</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon rose">🩺</div>
+      <div class="stat-info"><h3>{{ history|length }}</h3><p>Login Sessions</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green">✅</div>
+      <div class="stat-info">
+        <h3>
+          {% set nc=[] %}
+          {% for h in history %}{% if h['bmr'] and h['bmr']>=1200 and h['bmr']<=2500 %}{% if nc.append(1) %}{% endif %}{% endif %}{% endfor %}
+          {{ nc|length }}
+        </h3>
+        <p>Normal BMR Sessions</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon pink">🚩</div>
+      <div class="stat-info"><h3>{{ flagged|length }}</h3><p>Health Flags</p></div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       HEALTH FLAGS
+  ══════════════════════════════════════════ -->
+  {% if flagged %}
+  <div class="admin-section">
+    <div class="admin-section-header">
+      <h2><span>🚩</span> Health Flags — Attention Required</h2>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>User</th><th>Email</th><th>Assessment Score</th><th>Flag Reason</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for u in users %}{% if u['email'] in flagged %}
+          <tr>
+            <td><div class="user-cell"><span class="user-avatar-sm">🚩</span><strong>{{ u['name'] }}</strong></div></td>
+            <td class="col-muted">{{ u['email'] }}</td>
+            <td>
+              {% if assessments.get(u['email']) %}
+                <span class="bmr-badge {% if assessments[u['email']]['score'] >= 25 %}high{% else %}normal{% endif %}">
+                  {{ assessments[u['email']]['score'] }} / 30
+                </span>
+              {% else %}—{% endif %}
+            </td>
+            <td style="font-size:13px; color:#b71c1c;">
+              {% if assessments.get(u['email']) and assessments[u['email']]['score'] >= 25 %}High signup score. {% endif %}
+              Repeated severe daily symptoms.
+            </td>
+            <td>
+              <a href="/admin/user/{{ u['email'] }}" class="view-btn">👁 View</a>
+            </td>
+          </tr>
+          {% endif %}{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+
+  <!-- ══════════════════════════════════════════
+       REGISTERED USERS
+  ══════════════════════════════════════════ -->
+  <div class="admin-section">
+    <div class="admin-section-header">
+      <h2><span>👥</span> Registered Users</h2>
+      <input type="text" class="search-input" placeholder="Search users…"
+             oninput="filterTable('userTable', this.value)">
+    </div>
+
+    {% if users %}
+    <div class="admin-table-wrap">
+      <table class="admin-table" id="userTable">
+        <thead>
+          <tr>
+            <th>#</th><th>User</th><th>Email</th><th>📱 Phone</th><th>Age</th>
+            <th>Weight</th><th>Height</th><th>Assessment</th>
+            <th>Cycles</th><th>Password</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr id="urow_{{ loop.index }}">
+            <td class="col-num">{{ loop.index }}</td>
+            <td>
+              <div class="user-cell">
+                <span class="user-avatar-sm">
+                  {% if u['email'] in flagged %}
+                    🚩
+                  {% else %}
+                    <img src="{{ avatar_map[u['email']] }}"
+                         style="width:28px;height:28px;object-fit:contain;border-radius:50%;"
+                         onerror="this.style.display='none'">
+                  {% endif %}
+                </span>
+                <strong>{{ u['name'] }}</strong>
+              </div>
+            </td>
+            <td class="col-muted" style="font-size:12px;">{{ u['email'] }}</td>
+            <td class="col-muted">{{ u['phone'] or '—' }}</td>
+            <td>{{ u['age'] }} yrs</td>
+            <td>{{ u['weight'] }} kg</td>
+            <td>{{ u['height'] }} cm</td>
+            <td>
+              {% if assessments.get(u['email']) %}
+                <span class="bmr-badge
+                  {% if assessments[u['email']]['score'] <= 8 %}normal
+                  {% elif assessments[u['email']]['score'] <= 16 %}low
+                  {% else %}high{% endif %}">
+                  {{ assessments[u['email']]['score'] }} / 30
+                </span>
+              {% else %}
+                <span class="col-muted">Not done</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if cycle_stats.get(u['email']) %}
+                {{ cycle_stats[u['email']]['total_cycles'] }} cycles
+              {% else %}<span class="col-muted">—</span>{% endif %}
+            </td>
+
+            <!-- Password with eye toggle -->
+            <td>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span class="password-mask" id="pw_{{ loop.index }}">••••••••</span>
+                <button onclick="togglePassword('{{ u['email'] }}', {{ loop.index }})"
+                        id="eye_{{ loop.index }}"
+                        style="background:none; border:none; cursor:pointer; font-size:14px;
+                               color:#aaa; padding:0; line-height:1; transition:color .2s;"
+                        title="Show password"
+                        onmouseover="this.style.color='#c2185b'"
+                        onmouseout="this.style.color='#aaa'">👁</span>
+              </div>
+            </td>
+
+            <!-- Actions -->
+            <td>
+              <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                <a href="/admin/user/{{ u['email'] }}" class="view-btn">👁 View</a>
+                <a href="/admin/export/{{ u['email'] }}"
+                   style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;
+                          padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;
+                          text-decoration:none;" title="Export CSV">📥 CSV</a>
+                <button onclick="deleteUser('{{ u['email'] }}', 'urow_{{ loop.index }}')"
+                        class="del-btn-sm" title="Delete user">🗑</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="admin-table-wrap">
+      <div class="empty-state"><span>👤</span>No users registered yet.</div>
+    </div>
+    {% endif %}
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       HEALTH ACTIVITY LOG
+  ══════════════════════════════════════════ -->
+  <div class="admin-section">
+    <div class="admin-section-header">
+      <h2><span>🩺</span> Health Activity Log</h2>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <a href="/admin/backup"
+           style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;
+                  padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;
+                  text-decoration:none;">💾 Download DB Backup</a>
+        <input type="text" class="search-input" placeholder="Search by email…"
+               oninput="filterTable('historyTable', this.value)">
+      </div>
+    </div>
+
+    {% if history %}
+    <div class="admin-table-wrap">
+      <table class="admin-table" id="historyTable" style="min-width:1100px;">
+        <thead>
+          <tr><th>#</th><th>User</th><th>Date & Time</th>
+              <th>❤️ BPM</th><th>🩸 SpO2</th><th>🌡️ Temp °C</th>
+              <th>🔥 BMR</th><th>Status</th><th>Report</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for h in history %}
+
+          {% if h['bmr'] and h['bmr'] < 1200 %}
+            {% set st='low' %}{% set sl='BMR Low' %}{% set si='🔵' %}
+          {% elif h['bmr'] and h['bmr'] > 2500 %}
+            {% set st='high' %}{% set sl='BMR High' %}{% set si='🟠' %}
+          {% else %}
+            {% set st='normal' %}{% set sl='Normal' %}{% set si='🟢' %}
+          {% endif %}
+
+          <tr id="hrow_{{ h['id'] }}">
+            <td class="col-num">{{ loop.index }}</td>
+            <td>
+              <div class="user-cell">
+                <div class="activity-avatar">{{ h['email'][0].upper() if h['email'] else '?' }}</div>
+                <span class="col-muted" style="font-size:11px;">{{ h['email'] }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="time-cell">
+                {% if h['time'] %}
+                  {% set p = h['time'].split(' ') %}
+                  <span class="time-date">📅 {{ p[0] }}</span>
+                  <span class="time-hour">🕐 {{ p[1][:5] if p|length > 1 else '' }}</span>
+                {% else %}<span class="col-muted">—</span>{% endif %}
+              </div>
+            </td>
+            <td><strong style="color:#c2185b;">{{ h['bpm'] or '—' }}</strong></td>
+            <td><strong style="color:#1565c0;">{{ h['spo2'] or '—' }}</strong></td>
+            <td><strong style="color:#e65100;">{{ h['temperature'] or '—' }}</strong></td>
+            <td>
+              <div class="bmr-cell">
+                <span class="bmr-value">{{ h['bmr'] }}</span>
+                <span class="bmr-unit">kcal/day</span>
+              </div>
+            </td>
+            <td>
+              <span class="bmr-badge {{ st }}">{{ si }} {{ sl }}</span>
+            </td>
+            <td>
+              {% if h['report_downloaded'] == 1 %}
+                <span class="report-pill downloaded">✅ Downloaded</span>
+              {% else %}
+                <span class="report-pill not-downloaded">— Not yet</span>
+              {% endif %}
+            </td>
+            <td>
+              <button onclick="deleteRecord('/admin/delete/history/{{ h['id'] }}', 'hrow_{{ h['id'] }}')"
+                      class="del-btn-sm" title="Delete record">🗑</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="admin-table-wrap">
+      <div class="empty-state"><span>📭</span>No health activity records found yet.</div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<div class="admin-footer">
+  GraceHealth Monitoring System &nbsp;·&nbsp; Admin Control Panel &nbsp;·&nbsp;
+  <span style="color:#f48fb1;">💗</span>
+</div>
+
+<style>
+  .user-cell       { display:flex; align-items:center; gap:10px; }
+  .col-num         { color:#ddd; font-size:12px; font-weight:600; width:32px; }
+  .col-muted       { color:#999; font-size:13px; }
+  .activity-avatar { width:34px; height:34px; border-radius:50%;
+                     background:linear-gradient(135deg,#fce4ec,#f48fb1);
+                     color:#c2185b; font-weight:700; font-size:15px;
+                     display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .time-cell  { display:flex; flex-direction:column; gap:3px; }
+  .time-date  { font-size:13px; font-weight:500; color:#444; }
+  .time-hour  { font-size:12px; color:#aaa; }
+  .distance-pill { display:inline-block; background:#f3e5f5; color:#7b1fa2;
+                   padding:4px 12px; border-radius:50px; font-size:12px; font-weight:600; }
+  .bmr-cell   { display:flex; flex-direction:column; gap:2px; }
+  .bmr-value  { font-family:'Playfair Display',serif; font-size:19px;
+                font-weight:700; color:#c2185b; line-height:1; }
+  .bmr-unit   { font-size:11px; color:#bbb; }
+  .condition-cell { display:flex; flex-direction:column; gap:5px; }
+  .condition-text { font-size:11px; color:#999; line-height:1.4; max-width:175px; }
+  .report-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 12px;
+                 border-radius:50px; font-size:12px; font-weight:600; white-space:nowrap; }
+  .report-pill.downloaded     { background:#e8f5e9; color:#2e7d32; }
+  .report-pill.not-downloaded { background:#f5f5f5; color:#bbb; }
+
+  /* View button */
+  .view-btn { display:inline-block; background:#fff0f6; color:#c2185b;
+              border:1.5px solid #f8bbd0; padding:5px 12px; border-radius:50px;
+              font-size:12px; font-weight:600; text-decoration:none;
+              transition:all .3s ease; white-space:nowrap; }
+  .view-btn:hover { background:#c2185b; color:#fff; }
+
+  /* Delete buttons */
+  .del-btn-sm { background:#fdecea; color:#b71c1c; border:1.5px solid #ffcdd2;
+                padding:5px 10px; border-radius:50px; font-size:12px;
+                cursor:pointer; transition:all .3s ease; }
+  .del-btn-sm:hover { background:#b71c1c; color:#fff; }
+
+  /* Row fade on delete */
+  .row-deleting { opacity:.3; pointer-events:none; transition:opacity .4s; }
+  .row-deleted  { display:none; }
+
+  @media(max-width:900px) {
+    .admin-stats { grid-template-columns:repeat(2,1fr) !important; }
+  }
+</style>
+
+<script>
+  // ── Password eye toggle ───────────────────────────────────
+  var pwCache = {};
+
+  function togglePassword(email, idx) {
+    var span = document.getElementById('pw_' + idx);
+    var btn  = document.getElementById('eye_' + idx);
+
+    if (span.getAttribute('data-revealed') === '1') {
+      span.textContent = '••••••••';
+      span.setAttribute('data-revealed', '0');
+      btn.title = 'Show password';
+      return;
+    }
+
+    // Already fetched?
+    if (pwCache[email]) {
+      span.textContent = pwCache[email];
+      span.setAttribute('data-revealed', '1');
+      btn.title = 'Hide password';
+      return;
+    }
+
+    btn.textContent = '⏳';
+    fetch('/admin/get_password/' + encodeURIComponent(email))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        btn.textContent = '👁';
+        if (d.password) {
+          pwCache[email] = d.password;
+          span.textContent = d.password;
+          span.setAttribute('data-revealed', '1');
+          btn.title = 'Hide password';
+        } else {
+          span.textContent = '(error)';
+        }
+      })
+      .catch(function() {
+        btn.textContent = '👁';
+        span.textContent = '(failed)';
+      });
+  }
+
+  // ── Delete single record ──────────────────────────────────
+  function deleteRecord(url, rowId) {
+    if (!confirm('Delete this record? This cannot be undone.')) return;
+    var row = document.getElementById(rowId);
+    if (row) row.classList.add('row-deleting');
+    fetch(url, { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.success) {
+          setTimeout(function() {
+            if (row) row.classList.add('row-deleted');
+          }, 400);
+        } else {
+          alert('Error: ' + (d.error || 'Could not delete.'));
+          if (row) row.classList.remove('row-deleting');
+        }
+      })
+      .catch(function() {
+        alert('Request failed.');
+        if (row) row.classList.remove('row-deleting');
+      });
+  }
+
+  // ── Delete full user ──────────────────────────────────────
+  function deleteUser(email, rowId) {
+    if (!confirm('Delete this user and ALL their data? This CANNOT be undone.')) return;
+    var row = document.getElementById(rowId);
+    if (row) row.classList.add('row-deleting');
+    fetch('/admin/delete/user/' + encodeURIComponent(email), { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.success) {
+          setTimeout(function() {
+            if (row) row.classList.add('row-deleted');
+          }, 400);
+        } else {
+          alert('Error: ' + (d.error || 'Could not delete user.'));
+          if (row) row.classList.remove('row-deleting');
+        }
+      })
+      .catch(function() {
+        alert('Request failed.');
+        if (row) row.classList.remove('row-deleting');
+      });
+  }
+
+  // ── Search filter ─────────────────────────────────────────
+  function filterTable(tableId, query) {
+    var table = document.getElementById(tableId);
+    if (!table) return;
+    var rows  = table.querySelectorAll('tbody tr');
+    var lower = query.toLowerCase().trim();
+    var count = 0;
+    rows.forEach(function(row) {
+      if (row.id && row.id.includes('noResult')) return;
+      var show = lower === '' || row.textContent.toLowerCase().includes(lower);
+      row.style.display = show ? '' : 'none';
+      if (show) count++;
+    });
+    var noId  = tableId + '_noResult';
+    var noRow = document.getElementById(noId);
+    if (count === 0 && lower !== '') {
+      if (!noRow) {
+        var cols = table.querySelectorAll('thead th').length;
+        noRow    = document.createElement('tr');
+        noRow.id = noId;
+        noRow.innerHTML = '<td colspan="' + cols + '" style="text-align:center;padding:28px;'
+          + 'color:#bbb;font-size:14px;">🔍 No results for "<strong>' + query + '</strong>"</td>';
+        table.querySelector('tbody').appendChild(noRow);
+      }
+    } else if (noRow) {
+      noRow.remove();
+    }
+  }
+</script>
+
+</body>
+</html>

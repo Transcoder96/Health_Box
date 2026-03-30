@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Symptom Log — GraceHealth</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="auth-body" style="align-items:flex-start; padding:40px 20px;">
+
+<div style="max-width:620px; width:100%; margin:0 auto;">
+
+  <!-- Header -->
+  <div style="text-align:center; margin-bottom:32px;">
+    <a href="/dashboard" style="font-size:13px; color:#c2185b; font-weight:600;
+       display:inline-flex; align-items:center; gap:6px; margin-bottom:20px;">
+      ← Back to Dashboard
+    </a>
+    <div style="font-family:'Playfair Display',serif; font-size:26px; font-weight:800;
+                background:linear-gradient(135deg,#c2185b,#e91e8c);
+                -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+                background-clip:text; margin-bottom:8px;">
+      GraceHealth
+    </div>
+
+    <!-- Period day badge -->
+    <div style="display:inline-flex; align-items:center; gap:8px;
+                background:linear-gradient(135deg,#c2185b,#e91e8c);
+                color:#fff; padding:8px 22px; border-radius:50px;
+                font-size:14px; font-weight:600; margin-bottom:14px;">
+      🔴 Period Active — Day {{ day_number }}
+    </div>
+
+    <h2 style="font-family:'Playfair Display',serif; font-size:22px;
+               color:#2d2d2d; margin-bottom:8px;">
+      How are you feeling today?
+    </h2>
+    <p style="color:#888; font-size:14px; max-width:420px; margin:0 auto; line-height:1.7;">
+      Answer 5 quick questions about today's symptoms.
+      Your responses help track your cycle health over time.
+    </p>
+  </div>
+
+  {% if error %}
+  <div class="alert alert-error" style="margin-bottom:20px;">
+    <span>⚠️</span><span>{{ error }}</span>
+  </div>
+  {% endif %}
+
+  <form method="POST" action="/daily_log" onsubmit="return checkAll()">
+
+    <!-- Q1 -->
+    <div class="q-card">
+      <div class="q-number">Question 1 of 5</div>
+      <div class="q-text">🩸 How severe are your cramps today?</div>
+      <div class="select-wrapper">
+        <select name="q1" id="q1" required onchange="markAnswered(this,'qc1')">
+          <option value="" disabled selected>Select your answer</option>
+          <option value="0">Never / No cramps</option>
+          <option value="1">Sometimes / Mild</option>
+          <option value="2">Often / Moderate</option>
+          <option value="3">Always / Severe</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="q-card" id="qc2">
+      <div class="q-number">Question 2 of 5</div>
+      <div class="q-text">😴 How is your energy and fatigue level today?</div>
+      <div class="select-wrapper">
+        <select name="q2" id="q2" required onchange="markAnswered(this,'qc2')">
+          <option value="" disabled selected>Select your answer</option>
+          <option value="0">Never / Full of energy</option>
+          <option value="1">Sometimes / Slightly tired</option>
+          <option value="2">Often / Quite fatigued</option>
+          <option value="3">Always / Extremely exhausted</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="q-card" id="qc3">
+      <div class="q-number">Question 3 of 5</div>
+      <div class="q-text">💧 How heavy is your bleeding today?</div>
+      <div class="select-wrapper">
+        <select name="q3" id="q3" required onchange="markAnswered(this,'qc3')">
+          <option value="" disabled selected>Select your answer</option>
+          <option value="0">Never / No bleeding</option>
+          <option value="1">Sometimes / Light</option>
+          <option value="2">Often / Moderate</option>
+          <option value="3">Always / Very heavy</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Q4 -->
+    <div class="q-card" id="qc4">
+      <div class="q-number">Question 4 of 5</div>
+      <div class="q-text">💭 How is your mood today?</div>
+      <div class="select-wrapper">
+        <select name="q4" id="q4" required onchange="markAnswered(this,'qc4')">
+          <option value="" disabled selected>Select your answer</option>
+          <option value="0">Never / Mood is great</option>
+          <option value="1">Sometimes / Slightly low</option>
+          <option value="2">Often / Irritable or anxious</option>
+          <option value="3">Always / Very distressed</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Q5 -->
+    <div class="q-card" id="qc5">
+      <div class="q-number">Question 5 of 5</div>
+      <div class="q-text">🏫 Are your symptoms affecting your daily activities today?</div>
+      <div class="select-wrapper">
+        <select name="q5" id="q5" required onchange="markAnswered(this,'qc5')">
+          <option value="" disabled selected>Select your answer</option>
+          <option value="0">Never / Normal day</option>
+          <option value="1">Sometimes / Slightly affected</option>
+          <option value="2">Often / Quite affected</option>
+          <option value="3">Always / Cannot function normally</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Pain relief -->
+    <div class="q-card" id="qcpr" style="border-left-color:#f48fb1;">
+      <div class="q-number">Quick Check</div>
+      <div class="q-text">💊 Did you take any pain medication today?</div>
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        <label class="radio-pill">
+          <input type="radio" name="pain_relief" value="no" checked>
+          <span>No</span>
+        </label>
+        <label class="radio-pill">
+          <input type="radio" name="pain_relief" value="yes">
+          <span>Yes</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Flow intensity -->
+    <div class="q-card" style="border-left-color:#e91e8c;">
+      <div class="q-number">Flow</div>
+      <div class="q-text">🩸 How would you describe your flow today?</div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        {% for f in [('spotting','Spotting'),('light','Light'),('medium','Medium'),('heavy','Heavy'),('very_heavy','Very Heavy')] %}
+        <label class="radio-pill">
+          <input type="radio" name="flow" value="{{ f[0] }}" {% if f[0]=='medium' %}checked{% endif %}>
+          <span>{{ f[1] }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Wellness row -->
+    <div class="q-card" style="border-left-color:#ab47bc;">
+      <div class="q-number">Wellness</div>
+      <div class="q-text">🌿 Today's wellness check</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:8px;">
+
+        <!-- Iron supplement -->
+        <div>
+          <div style="font-size:13px; font-weight:600; color:#555; margin-bottom:6px;">
+            💊 Iron supplement taken?
+          </div>
+          <div style="display:flex; gap:10px;">
+            <label class="radio-pill"><input type="radio" name="iron_taken" value="no" checked><span>No</span></label>
+            <label class="radio-pill"><input type="radio" name="iron_taken" value="yes"><span>Yes</span></label>
+          </div>
+        </div>
+
+        <!-- Water intake -->
+        <div>
+          <div style="font-size:13px; font-weight:600; color:#555; margin-bottom:6px;">
+            💧 Glasses of water: <span id="waterVal">4</span>
+          </div>
+          <input type="range" name="water" id="waterRange" min="0" max="10" value="4"
+                 oninput="document.getElementById('waterVal').textContent=this.value"
+                 style="width:100%; accent-color:#c2185b;">
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:#aaa;">
+            <span>0</span><span>5</span><span>10</span>
+          </div>
+        </div>
+
+        <!-- Sleep quality -->
+        <div>
+          <div style="font-size:13px; font-weight:600; color:#555; margin-bottom:6px;">
+            😴 How did you sleep last night?
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <label class="radio-pill"><input type="radio" name="sleep_q" value="poor"><span>😫 Poor</span></label>
+            <label class="radio-pill"><input type="radio" name="sleep_q" value="fair" checked><span>😐 Fair</span></label>
+            <label class="radio-pill"><input type="radio" name="sleep_q" value="good"><span>😊 Good</span></label>
+          </div>
+        </div>
+
+        <!-- Exercise -->
+        <div>
+          <div style="font-size:13px; font-weight:600; color:#555; margin-bottom:6px;">
+            🏃 Did you exercise today?
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <label class="radio-pill"><input type="radio" name="exercise" value="none" checked><span>None</span></label>
+            <label class="radio-pill"><input type="radio" name="exercise" value="light"><span>Light</span></label>
+            <label class="radio-pill"><input type="radio" name="exercise" value="moderate"><span>Moderate</span></label>
+            <label class="radio-pill"><input type="radio" name="exercise" value="intense"><span>Intense</span></label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="q-card" style="border-left-color:#f48fb1;">
+      <div class="q-number">Optional</div>
+      <div class="q-text">📝 Anything else you want to note today?</div>
+      <textarea name="notes" maxlength="200" placeholder="How are you feeling overall? Any specific symptoms to remember…"
+        style="width:100%; padding:12px 14px; border:1.5px solid #e8e8e8; border-radius:10px;
+               font-family:'DM Sans',sans-serif; font-size:14px; color:#2d2d2d; resize:vertical;
+               min-height:80px; outline:none; transition:all .3s ease;"
+        onfocus="this.style.borderColor='#f48fb1'"
+        onblur="this.style.borderColor='#e8e8e8'"></textarea>
+      <div style="text-align:right; font-size:11px; color:#bbb; margin-top:4px;">Max 200 characters</div>
+    </div>
+
+    <button type="submit" class="btn-primary" id="submitBtn">
+      Save Today's Log ✓
+    </button>
+
+  </form>
+
+</div>
+
+<style>
+  .q-card {
+    background:#fff; border-radius:16px; padding:22px 24px;
+    margin-bottom:14px; box-shadow:0 2px 12px rgba(194,24,91,.07);
+    border-left:4px solid #f48fb1; transition:all .3s ease;
+  }
+  .q-card.answered { border-left-color:#c2185b; background:#fff8fb; }
+  .q-number { font-size:11px; font-weight:700; color:#f48fb1;
+              letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
+  .q-text   { font-size:15px; font-weight:500; color:#2d2d2d;
+              margin-bottom:14px; line-height:1.5; }
+  .select-wrapper { position:relative; }
+  .select-wrapper select {
+    width:100%; padding:11px 36px 11px 16px; border:1.5px solid #e8e8e8;
+    border-radius:10px; font-family:'DM Sans',sans-serif; font-size:14px;
+    color:#2d2d2d; background:#fff; appearance:none; -webkit-appearance:none;
+    outline:none; cursor:pointer; transition:all .3s ease;
+  }
+  .select-wrapper select:focus { border-color:#f48fb1; box-shadow:0 0 0 3px rgba(244,143,177,.2); }
+  .select-arrow { position:absolute; right:14px; top:50%; transform:translateY(-50%);
+                  pointer-events:none; color:#aaa; font-size:14px; }
+  .radio-pill { display:inline-flex; align-items:center; gap:8px; cursor:pointer; }
+  .radio-pill input { accent-color:#c2185b; width:16px; height:16px; }
+  .radio-pill span { font-size:14px; color:#444; font-weight:500; }
+  .btn-primary.loading { opacity:.75; pointer-events:none; }
+</style>
+
+<script>
+  function markAnswered(sel, cardId) {
+    if (sel.value !== '') {
+      document.getElementById(cardId).classList.add('answered');
+    }
+  }
+  function checkAll() {
+    for (var i = 1; i <= 5; i++) {
+      var s = document.getElementById('q' + i);
+      if (!s || s.value === '') {
+        document.getElementById('qc' + i).scrollIntoView({behavior:'smooth', block:'center'});
+        alert('Please answer Question ' + i + ' before saving.');
+        return false;
+      }
+    }
+    var btn = document.getElementById('submitBtn');
+    btn.textContent = 'Saving…'; btn.classList.add('loading');
+    return true;
+  }
+</script>
+</body>
+</html>

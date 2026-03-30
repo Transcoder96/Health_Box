@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — GraceHealth</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body class="auth-body">
+
+  <div class="auth-wrapper">
+
+    <!-- ── Left Branding Panel ─────────────────────────────── -->
+    <div class="auth-brand">
+
+      <span class="auth-brand-icon">🌸</span>
+
+      <div class="auth-brand-logo">GraceHealth</div>
+
+      <p class="auth-brand-tagline">
+        Your personal women's health monitoring platform — track, understand, and grow.
+      </p>
+
+      <ul class="auth-brand-features">
+        <li>Real-time BMR monitoring</li>
+        <li>IoT sensor integration</li>
+        <li>Downloadable health reports</li>
+        <li>Women's health awareness</li>
+      </ul>
+
+    </div>
+
+    <!-- ── Right Form Panel ───────────────────────────────── -->
+    <div class="auth-form-panel">
+
+      <h2>Welcome back</h2>
+      <p class="auth-subtitle">Sign in to your GraceHealth account</p>
+
+      <!-- Error Alert -->
+      {% if error %}
+      <div class="alert alert-error">
+        <span>⚠️</span>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <form method="POST" action="/login" onsubmit="handleSubmit(this); return true;">
+
+        <div class="form-group">
+          <label for="identifier">Email Address or Phone Number</label>
+          <input
+            type="text"
+            id="identifier"
+            name="identifier"
+            placeholder="you@example.com  or  9876543210"
+            required
+            autocomplete="username"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="password-wrapper">
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="Enter your password"
+              required
+              autocomplete="current-password"
+            >
+            <button
+              type="button"
+              class="toggle-pw"
+              onclick="togglePassword('password', this)"
+              tabindex="-1"
+            >👁</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" id="submitBtn">
+          Sign In
+        </button>
+
+      </form>
+
+      <div class="auth-link">
+        Don't have an account? <a href="/signup">Create one here</a>
+      </div>
+
+    </div>
+    <!-- end auth-form-panel -->
+
+  </div>
+  <!-- end auth-wrapper -->
+
+  <style>
+    /* Password toggle wrapper */
+    .password-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .password-wrapper input {
+      padding-right: 44px;
+    }
+
+    .toggle-pw {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      color: #aaa;
+      padding: 0;
+      line-height: 1;
+      transition: opacity 0.2s;
+    }
+
+    .toggle-pw:hover {
+      opacity: 0.7;
+    }
+
+    /* Loading state on button */
+    .btn-primary.loading {
+      opacity: 0.75;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+  </style>
+
+  <script>
+    // Show/hide password
+    function togglePassword(fieldId, btn) {
+      const input = document.getElementById(fieldId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+      }
+    }
+
+    // Prevent double submit — runs AFTER form submits
+    function handleSubmit(form) {
+      try {
+        const btn = document.getElementById('submitBtn');
+        btn.textContent = 'Signing in…';
+        btn.classList.add('loading');
+      } catch(e) {}
+      return true; // always allow form to submit
+    }
+  </script>
+
+</body>
+</html>

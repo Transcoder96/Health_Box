@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account — GraceHealth</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="auth-body">
+  <div class="auth-wrapper" style="max-width:1000px; min-height:580px;">
+
+    <div class="auth-brand">
+      <span class="auth-brand-icon">💗</span>
+      <div class="auth-brand-logo">GraceHealth</div>
+      <p class="auth-brand-tagline">Your personal women's health monitoring platform — track, understand, and grow.</p>
+      <ul class="auth-brand-features">
+        <li>Personalised BMR tracking</li>
+        <li>Period health screening</li>
+        <li>Daily symptom monitoring</li>
+        <li>Cycle predictions & insights</li>
+        <li>100% private & secure</li>
+      </ul>
+    </div>
+
+    <div class="auth-form-panel">
+      <h2>Create your account</h2>
+      <p class="auth-subtitle">Join GraceHealth — built for women, by design 🌸</p>
+
+      {% if error %}
+      <div class="alert alert-error"><span>⚠️</span><span>{{ error }}</span></div>
+      {% endif %}
+
+      <div class="alert alert-error" id="clientError" style="display:none;">
+        <span>⚠️</span><span id="clientErrorMsg"></span>
+      </div>
+
+      <form method="POST" action="/signup" onsubmit="return validateForm(this)">
+
+        <div class="form-group">
+          <label for="name">Full Name</label>
+          <input type="text" id="name" name="name" placeholder="e.g. Ananya Sharma"
+                 required minlength="2" autocomplete="name">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="age">Age</label>
+            <input type="number" id="age" name="age" placeholder="e.g. 18"
+                   required min="10" max="80">
+          </div>
+          <div class="form-group">
+            <label for="weight">Weight (kg)</label>
+            <input type="number" id="weight" name="weight" placeholder="e.g. 55"
+                   required min="20" max="200" step="0.1">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="height">Height (cm)</label>
+          <input type="number" id="height" name="height" placeholder="e.g. 162"
+                 required min="50" max="220" step="0.1">
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" placeholder="you@example.com"
+                 required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Phone Number <span style="color:#c2185b;">*</span></label>
+          <input type="tel" id="phone" name="phone" placeholder="10-digit number e.g. 9876543210"
+                 maxlength="10" pattern="[0-9]{10}" autocomplete="tel" required>
+          <div style="font-size:11px;color:#aaa;margin-top:4px;">You can use this to login instead of email.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="password-wrapper">
+            <input type="password" id="password" name="password"
+                   placeholder="Minimum 6 characters" required minlength="6"
+                   autocomplete="new-password" oninput="updateStrength(this.value)">
+            <button type="button" class="toggle-pw"
+                    onclick="togglePassword('password',this)" tabindex="-1">👁</button>
+          </div>
+          <div class="strength-bar-wrap"><div class="strength-bar" id="strengthBar"></div></div>
+          <div class="strength-label" id="strengthLabel"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="confirm_password">Confirm Password</label>
+          <div class="password-wrapper">
+            <input type="password" id="confirm_password" name="confirm_password"
+                   placeholder="Re-enter your password" required autocomplete="new-password">
+            <button type="button" class="toggle-pw"
+                    onclick="togglePassword('confirm_password',this)" tabindex="-1">👁</button>
+          </div>
+          <div class="match-label" id="matchLabel"></div>
+        </div>
+
+        <button type="submit" class="btn-primary" id="submitBtn">
+          Continue to Health Assessment →
+        </button>
+
+      </form>
+
+      <div class="auth-link">Already have an account? <a href="/login">Sign in here</a></div>
+    </div>
+  </div>
+
+  <style>
+    .password-wrapper { position:relative; display:flex; align-items:center; }
+    .password-wrapper input { padding-right:44px; }
+    .toggle-pw { position:absolute; right:12px; background:none; border:none;
+                 cursor:pointer; font-size:16px; color:#aaa; padding:0; transition:opacity .2s; }
+    .toggle-pw:hover { opacity:.7; }
+    .strength-bar-wrap { height:4px; background:#f0f0f0; border-radius:4px; margin-top:8px; overflow:hidden; }
+    .strength-bar { height:100%; width:0%; border-radius:4px; transition:all .4s ease; }
+    .strength-label { font-size:12px; margin-top:4px; font-weight:500; min-height:16px; }
+    .match-label { font-size:12px; margin-top:5px; font-weight:500; min-height:16px; }
+    .btn-primary.loading { opacity:.75; pointer-events:none; }
+  </style>
+
+  <script>
+    function togglePassword(id,btn){
+      var inp=document.getElementById(id);
+      inp.type=inp.type==='password'?'text':'password';
+      btn.textContent=inp.type==='password'?'👁':'🙈';
+    }
+    function updateStrength(val){
+      var bar=document.getElementById('strengthBar'),lbl=document.getElementById('strengthLabel'),s=0;
+      if(val.length>=6)s++;if(val.length>=10)s++;
+      if(/[A-Z]/.test(val))s++;if(/[0-9]/.test(val))s++;if(/[^A-Za-z0-9]/.test(val))s++;
+      var lvl=[{w:'0%',c:'transparent',t:''},{w:'25%',c:'#e53935',t:'🔴 Weak'},
+               {w:'50%',c:'#fb8c00',t:'🟠 Fair'},{w:'75%',c:'#fdd835',t:'🟡 Good'},
+               {w:'90%',c:'#43a047',t:'🟢 Strong'},{w:'100%',c:'#1b5e20',t:'✅ Very Strong'}][Math.min(s,5)];
+      bar.style.width=lvl.w;bar.style.backgroundColor=lvl.c;
+      lbl.textContent=lvl.t;lbl.style.color=lvl.c;
+      checkMatch();
+    }
+    document.getElementById('confirm_password').addEventListener('input',checkMatch);
+    function checkMatch(){
+      var pw=document.getElementById('password').value,
+          cf=document.getElementById('confirm_password').value,
+          lbl=document.getElementById('matchLabel');
+      if(!cf){lbl.textContent='';return;}
+      lbl.textContent=pw===cf?'✅ Passwords match':'❌ Passwords do not match';
+      lbl.style.color=pw===cf?'#2e7d32':'#b71c1c';
+    }
+    function showError(msg){
+      var b=document.getElementById('clientError');
+      document.getElementById('clientErrorMsg').textContent=msg;
+      b.style.display='flex';b.scrollIntoView({behavior:'smooth',block:'nearest'});
+      return false;
+    }
+    function validateForm(form){
+      document.getElementById('clientError').style.display='none';
+      var name=form.name.value.trim(),age=parseInt(form.age.value),
+          weight=parseFloat(form.weight.value),height=parseFloat(form.height.value),
+          email=form.email.value.trim(),pw=form.password.value,cf=form.confirm_password.value;
+      if(name.length<2) return showError('Please enter your full name.');
+      if(isNaN(age)||age<10||age>80) return showError('Please enter a valid age (10–80).');
+      if(isNaN(weight)||weight<20||weight>200) return showError('Please enter a valid weight (20–200 kg).');
+      if(isNaN(height)||height<50||height>220) return showError('Please enter a valid height (50–220 cm).');
+      if(!email.includes('@')) return showError('Please enter a valid email address.');
+      if(pw.length<6) return showError('Password must be at least 6 characters.');
+      if(pw!==cf) return showError('Passwords do not match.');
+      var btn=document.getElementById('submitBtn');
+      btn.textContent='Creating account…';btn.classList.add('loading');
+      return true;
+    }
+  </script>
+</body>
+</html>

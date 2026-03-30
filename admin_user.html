@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ user['name'] }} — Admin View</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="admin-body">
+
+<div class="admin-topbar">
+  <div class="admin-topbar-logo">GraceHealth</div>
+  <div class="admin-topbar-right">
+    <a href="/admin" style="color:#f48fb1; font-size:13px; font-weight:600; text-decoration:none;">← Back to Admin</a>
+    <span class="admin-badge">🔐 Admin Panel</span>
+    <a href="/logout" class="btn-logout">Logout</a>
+  </div>
+</div>
+
+<div class="admin-content">
+
+  <!-- Page Header -->
+  <div class="admin-page-header">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;">
+      <img src="{{ avatar_url }}" alt="Avatar"
+           style="width:64px;height:64px;object-fit:contain;border-radius:50%;
+                  background:#fff0f6;padding:4px;border:2px solid #f8bbd0;"
+           onerror="this.style.display='none'">
+      <h1 style="margin:0;">{{ user['name'] }}</h1>
+    </div>
+    <p>{{ user['email'] }} &nbsp;·&nbsp; Age {{ user['age'] }} &nbsp;·&nbsp; {{ user['weight'] }} kg &nbsp;·&nbsp; {{ user['height'] }} cm</p>
+  </div>
+
+  <!-- Quick stats strip -->
+  <div class="admin-stats" style="grid-template-columns:repeat(4,1fr);">
+    <div class="stat-card">
+      <div class="stat-icon pink">🔥</div>
+      <div class="stat-info"><h3>{{ bmr }}</h3><p>BMR (kcal/day)</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon {% if bmr_status == 'normal' %}green{% else %}rose{% endif %}">
+        {% if bmr_status == 'normal' %}✅{% else %}⚠️{% endif %}
+      </div>
+      <div class="stat-info">
+        <h3>{{ bmr_status | capitalize }}</h3><p>BMR Status</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon rose">🩺</div>
+      <div class="stat-info">
+        <h3>{% if assessment %}{{ assessment['score'] }}/30{% else %}—{% endif %}</h3>
+        <p>Assessment Score</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon pink">📅</div>
+      <div class="stat-info"><h3>{{ cycles|length }}</h3><p>Cycles Logged</p></div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 1 — Period Health Assessment
+  ══════════════════════════════════════════════ -->
+  <div class="admin-section">
+    <div class="admin-section-header">
+      <h2><span>🌸</span> Period Health Assessment</h2>
+      {% if assessment %}
+      <button onclick="confirmDelete('/admin/delete/assessment/{{ user['email'] }}', 'assessment', null)"
+              class="del-btn">🗑 Delete Assessment</button>
+      {% endif %}
+    </div>
+
+    {% if assessment %}
+    <div class="admin-table-wrap">
+      <!-- Score summary -->
+      <div style="display:flex; gap:16px; flex-wrap:wrap; padding:20px 24px;
+                  border-bottom:1px solid #fce4ec; align-items:center;">
+        <div style="flex:1; min-width:200px;">
+          <div style="font-size:12px; color:#aaa; font-weight:600; text-transform:uppercase;
+                      letter-spacing:1px; margin-bottom:6px;">Total Score</div>
+          <div style="font-family:'Playfair Display',serif; font-size:36px;
+                      font-weight:700; color:#c2185b; line-height:1;">
+            {{ assessment['score'] }} <span style="font-size:16px; color:#aaa;">/ 30</span>
+          </div>
+        </div>
+        <div style="flex:2; min-width:240px;">
+          <div style="font-size:12px; color:#aaa; font-weight:600; text-transform:uppercase;
+                      letter-spacing:1px; margin-bottom:6px;">Analysis Result</div>
+          <div style="font-size:14px; color:#444; line-height:1.6;">{{ assessment['analysis'] }}</div>
+          <div style="font-size:12px; color:#aaa; margin-top:6px;">Completed: {{ assessment['date'] }}</div>
+        </div>
+        <!-- Score badge -->
+        <div>
+          {% if assessment['score'] <= 8 %}
+            <span class="bmr-badge normal" style="font-size:14px; padding:8px 20px;">🟢 Normal</span>
+          {% elif assessment['score'] <= 16 %}
+            <span class="bmr-badge low" style="font-size:14px; padding:8px 20px;">🟡 Moderate</span>
+          {% elif assessment['score'] <= 24 %}
+            <span class="bmr-badge high" style="font-size:14px; padding:8px 20px;">🟠 Severe</span>
+          {% else %}
+            <span class="bmr-badge high" style="font-size:14px; padding:8px 20px; background:#b71c1c;">🔴 Critical</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Individual answers -->
+      {% set q_labels = [
+        'How regular are your menstrual cycles?',
+        'Severe abdominal cramps during period?',
+        'Excessive fatigue or weakness during period?',
+        'Strong mood swings before/during period?',
+        'Headaches or migraines around menstrual cycle?',
+        'Heavy menstrual bleeding?',
+        'Bloating or stomach discomfort before period?',
+        'Acne breakouts before period?',
+        'Difficulty concentrating during period?',
+        'Symptoms affect daily activities or school?'
+      ] %}
+      {% set score_labels = ['Never', 'Sometimes', 'Often', 'Always'] %}
+
+      <table class="admin-table">
+        <thead><tr><th>#</th><th>Question</th><th>Answer</th><th>Score</th></tr></thead>
+        <tbody>
+          {% for i in range(1, 11) %}
+          {% set ans = assessment['q' ~ i] %}
+          <tr>
+            <td class="col-num">{{ i }}</td>
+            <td style="font-size:13px; color:#444;">{{ q_labels[i-1] }}</td>
+            <td>
+              <span style="padding:3px 12px; border-radius:50px; font-size:12px; font-weight:600;
+                    background:{% if ans == 0 %}#e8f5e9; color:#2e7d32
+                    {% elif ans == 1 %}#fff8e1; color:#f57f17
+                    {% elif ans == 2 %}#fff3e0; color:#e65100
+                    {% else %}#fdecea; color:#b71c1c{% endif %};">
+                {{ score_labels[ans] if ans is not none else '—' }}
+              </span>
+            </td>
+            <td><strong>{{ ans }}</strong></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="admin-table-wrap">
+      <div class="empty-state"><span>📋</span>No assessment completed yet.</div>
+    </div>
+    {% endif %}
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 2 — BMR Health Records
+  ══════════════════════════════════════════════ -->
+  <div class="admin-section">
+    <div class="admin-section-header">
+      <h2><span>📊</span> BMR Health Records</h2>
+    </div>
+
+    {% if history %}
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>#</th><th>Sensor Distance</th><th>BMR</th><th>Status</th>
+              <th>Date & Time</th><th>Report</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for h in history %}
+          <tr id="hrow_{{ h['id'] }}">
+            <td class="col-num">{{ loop.index }}</td>
+            <td>
+              {% if h['distance'] and h['distance'] not in ['Arduino not connected','No reading','Sensor error'] %}
+                <span class="distance-pill">📡 {{ h['distance'] }} cm</span>
+              {% else %}
+                <span class="col-muted">{{ h['distance'] or '—' }}</span>
+              {% endif %}
+            </td>
+            <td><div class="bmr-cell">
+              <span class="bmr-value">{{ h['bmr'] }}</span>
+              <span class="bmr-unit">kcal/day</span>
+            </div></td>
+            <td>
+              {% if h['bmr'] and h['bmr'] < 1200 %}<span class="bmr-badge low">🔵 Low</span>
+              {% elif h['bmr'] and h['bmr'] > 2500 %}<span class="bmr-badge high">🟠 High</span>
+              {% else %}<span class="bmr-badge normal">🟢 Normal</span>{% endif %}
+            </td>
+            <td class="col-muted">{{ h['time'] }}</td>
+            <td>
+              {% if h['report_downloaded'] == 1 %}
+                <span class="report-pill downloaded">✅ Downloaded</span>
+              {% else %}
+                <span class="report-pill not-downloaded">— Not yet</span>
+              {% endif %}
+            </td>
+            <td>
+              <button onclick="confirmDelete('/admin/delete/history/{{ h['id'] }}', 'record', 'hrow_{{ h['id'] }}')"
+                      class="del-btn-sm">🗑</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="admin-table-wrap">
+      <div class="empty-state"><span>📭</span>No BMR records for this user.</div>
+    </div>
+    {% endif %}
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 3 — Cycle History
+  ══════════════════════════════════════════════ -->
+  <div class="admin-section">
+    <div class="admin-section-header">
+      <h2><span>📅</span> Cycle History</h2>
+    </div>
+
+    {% if cycles %}
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>#</th><th>Start</th><th>End</th><th>Duration</th>
+              <th>Avg Score</th><th>Worst Day</th><th>Overall</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for c in cycles %}
+          <tr id="crow_{{ c['id'] }}">
+            <td class="col-num">{{ loop.index }}</td>
+            <td style="font-size:13px; color:#444;">{{ c['start_date'] or '—' }}</td>
+            <td style="font-size:13px; color:#444;">{{ c['end_date'] or 'Active' }}</td>
+            <td>
+              {% if c['start_date'] and c['end_date'] %}
+                {% set s = c['start_date'].split('-') %}
+                {% set e = c['end_date'].split('-') %}
+                <span style="font-size:13px;">
+                  {{ (c['end_date']|string)[:10] }}
+                </span>
+              {% else %}
+                <span class="col-muted">Ongoing</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if c['avg_score'] %}
+                <strong style="color:#c2185b;">{{ "%.1f"|format(c['avg_score']) }}</strong>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if c['worst_day'] %}
+                Day {{ c['worst_day'] }}
+                <span class="col-muted">(Score {{ c['worst_score'] }})</span>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if c['overall_label'] %}
+                <span style="padding:3px 10px; border-radius:50px; font-size:12px; font-weight:600;
+                      {% if c['overall_label'] == 'Mild' %}background:#e8f5e9; color:#2e7d32;
+                      {% elif c['overall_label'] == 'Moderate' %}background:#fff3e0; color:#e65100;
+                      {% else %}background:#fdecea; color:#b71c1c;{% endif %}">
+                  {{ c['overall_label'] }}
+                </span>
+              {% else %}<span class="col-muted">Ongoing</span>{% endif %}
+            </td>
+            <td>
+              <button onclick="confirmDelete('/admin/delete/cycle/{{ c['id'] }}', 'cycle', 'crow_{{ c['id'] }}')"
+                      class="del-btn-sm">🗑</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="admin-table-wrap">
+      <div class="empty-state"><span>📅</span>No cycles logged yet.</div>
+    </div>
+    {% endif %}
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 4 — Daily Symptom Logs
+  ══════════════════════════════════════════════ -->
+  <div class="admin-section">
+    <div class="admin-section-header">
+      <h2><span>📝</span> Daily Symptom Logs</h2>
+    </div>
+
+    {% if daily_logs %}
+    <div class="admin-table-wrap">
+      <table class="admin-table" style="min-width:900px;">
+        <thead>
+          <tr><th>#</th><th>Date</th><th>Day</th><th>Score</th>
+              <th>Status</th><th>Tip</th><th>Notes</th><th>Pain Relief</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for d in daily_logs %}
+          <tr id="drow_{{ d['id'] }}">
+            <td class="col-num">{{ loop.index }}</td>
+            <td class="col-muted">{{ d['date'] }}</td>
+            <td style="font-size:13px;">Day {{ d['day_number'] }}</td>
+            <td>
+              <span style="font-family:'Playfair Display',serif; font-size:18px;
+                           font-weight:700; color:#c2185b;">{{ d['score'] }}</span>
+              <span class="col-muted">/15</span>
+            </td>
+            <td>
+              {% if d['analysis'] %}
+                <span style="padding:3px 10px; border-radius:50px; font-size:12px; font-weight:600;
+                      {% if d['analysis'] == 'Mild' %}background:#e8f5e9; color:#2e7d32;
+                      {% elif d['analysis'] == 'Moderate' %}background:#fff3e0; color:#e65100;
+                      {% elif d['analysis'] == 'Severe' %}background:#fdecea; color:#b71c1c;
+                      {% else %}background:#b71c1c; color:#fff;{% endif %}">
+                  {{ d['analysis'] }}
+                </span>
+              {% else %}—{% endif %}
+            </td>
+            <td style="font-size:12px; color:#888; max-width:180px;">
+              {{ d['tip'] or '—' }}
+            </td>
+            <td style="font-size:12px; color:#666; max-width:150px; font-style:italic;">
+              {{ d['notes'] or '—' }}
+            </td>
+            <td>
+              {% if d['pain_relief'] == 1 %}
+                <span style="color:#c2185b; font-size:13px; font-weight:600;">💊 Yes</span>
+              {% else %}
+                <span class="col-muted">No</span>
+              {% endif %}
+            </td>
+            <td>
+              <button onclick="confirmDelete('/admin/delete/daily/{{ d['id'] }}', 'log', 'drow_{{ d['id'] }}')"
+                      class="del-btn-sm">🗑</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="admin-table-wrap">
+      <div class="empty-state"><span>📝</span>No daily logs yet.</div>
+    </div>
+    {% endif %}
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════
+       DANGER ZONE — Delete User
+  ══════════════════════════════════════════════ -->
+  <div class="admin-section" style="border:2px solid #ffcdd2; border-radius:16px;">
+    <div style="padding:24px 28px;">
+      <h2 style="color:#b71c1c; font-size:18px; margin-bottom:8px;">⚠️ Danger Zone</h2>
+      <p style="font-size:14px; color:#888; margin-bottom:20px;">
+        Permanently delete <strong>{{ user['name'] }}</strong> and ALL their data —
+        assessment, BMR history, cycles, and daily logs. This cannot be undone.
+      </p>
+      <button onclick="deleteUser('{{ user['email'] }}')"
+              style="background:#b71c1c; color:#fff; border:none; padding:12px 28px;
+                     border-radius:50px; font-size:14px; font-weight:600; cursor:pointer;
+                     transition:all .3s ease;"
+              onmouseover="this.style.background='#7f0000'"
+              onmouseout="this.style.background='#b71c1c'">
+        🗑 Delete {{ user['name'] }} Permanently
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<div class="admin-footer">
+  GraceHealth &nbsp;·&nbsp; Admin User Detail &nbsp;·&nbsp; <span style="color:#f48fb1;">💗</span>
+</div>
+
+<style>
+  .del-btn {
+    background:#fdecea; color:#b71c1c; border:1.5px solid #ffcdd2;
+    padding:7px 16px; border-radius:50px; font-size:12px; font-weight:600;
+    cursor:pointer; transition:all .3s ease;
+  }
+  .del-btn:hover { background:#b71c1c; color:#fff; }
+  .del-btn-sm {
+    background:#fdecea; color:#b71c1c; border:1.5px solid #ffcdd2;
+    padding:5px 10px; border-radius:50px; font-size:12px; cursor:pointer;
+    transition:all .3s ease;
+  }
+  .del-btn-sm:hover { background:#b71c1c; color:#fff; }
+
+  .distance-pill { display:inline-block; background:#f3e5f5; color:#7b1fa2;
+                   padding:4px 12px; border-radius:50px; font-size:12px; font-weight:600; }
+  .bmr-cell  { display:flex; flex-direction:column; gap:2px; }
+  .bmr-value { font-family:'Playfair Display',serif; font-size:18px; font-weight:700;
+               color:#c2185b; line-height:1; }
+  .bmr-unit  { font-size:11px; color:#bbb; }
+  .col-muted { color:#999; font-size:13px; }
+  .col-num   { color:#ddd; font-size:12px; font-weight:600; }
+  .report-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 12px;
+                 border-radius:50px; font-size:12px; font-weight:600; white-space:nowrap; }
+  .report-pill.downloaded     { background:#e8f5e9; color:#2e7d32; }
+  .report-pill.not-downloaded { background:#f5f5f5; color:#bbb; }
+
+  /* Fade out deleted rows */
+  .row-deleting { opacity:.4; pointer-events:none; transition:opacity .4s; }
+  .row-deleted  { display:none; }
+</style>
+
+<script>
+  function confirmDelete(url, type, rowId) {
+    var labels = {
+      'assessment': 'this assessment',
+      'record':     'this BMR record',
+      'cycle':      'this cycle and all its daily logs',
+      'log':        'this daily log entry'
+    };
+    if (!confirm('Delete ' + (labels[type] || 'this item') + '? This cannot be undone.')) return;
+
+    var row = rowId ? document.getElementById(rowId) : null;
+    if (row) row.classList.add('row-deleting');
+
+    fetch(url, { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.success) {
+          if (row) {
+            setTimeout(function() { row.classList.add('row-deleted'); }, 400);
+          } else {
+            location.reload();
+          }
+        } else {
+          alert('Error: ' + (d.error || 'Could not delete.'));
+          if (row) row.classList.remove('row-deleting');
+        }
+      })
+      .catch(function() {
+        alert('Request failed. Please try again.');
+        if (row) row.classList.remove('row-deleting');
+      });
+  }
+
+  function deleteUser(email) {
+    if (!confirm('⚠️ PERMANENTLY delete this user and ALL their data?\n\nThis CANNOT be undone.')) return;
+    if (!confirm('Are you absolutely sure? Press OK to confirm deletion.')) return;
+
+    fetch('/admin/delete/user/' + encodeURIComponent(email), { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.success) {
+          alert('User deleted successfully.');
+          window.location.href = '/admin';
+        } else {
+          alert('Error: ' + (d.error || 'Could not delete user.'));
+        }
+      })
+      .catch(function() { alert('Request failed. Please try again.'); });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Assessment — GraceHealth</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="auth-body" style="align-items:flex-start; padding:40px 20px;">
+
+<div style="max-width:700px; width:100%; margin:0 auto;">
+
+  <!-- Header -->
+  <div style="text-align:center; margin-bottom:30px;">
+    <div style="font-family:'Playfair Display',serif; font-size:28px; font-weight:800;
+                background:linear-gradient(135deg,#c2185b,#e91e8c);
+                -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+                background-clip:text; margin-bottom:8px;">
+      GraceHealth
+    </div>
+    <h2 style="font-family:'Playfair Display',serif; font-size:22px; color:#2d2d2d; margin-bottom:4px;">
+      Period Health Assessment 🌸
+    </h2>
+    <p style="color:#c2185b; font-size:13px; font-weight:600; margin:0 0 6px;">
+      माहवारी स्वास्थ्य मूल्यांकन
+    </p>
+    <p style="color:#888; font-size:13px; max-width:500px; margin:0 auto; line-height:1.7;">
+      This one-time questionnaire helps us understand your menstrual health baseline.<br>
+      <span style="color:#aaa; font-size:12px;">यह एक बार का प्रश्नपत्र है जो आपके मासिक स्वास्थ्य को समझने में मदद करता है।</span>
+    </p>
+  </div>
+
+  <!-- Progress bar -->
+  <div style="background:#f5f5f5; border-radius:50px; height:6px; margin-bottom:6px; overflow:hidden;">
+    <div id="progressBar" style="height:100%; width:0%;
+         background:linear-gradient(90deg,#c2185b,#e91e8c); border-radius:50px;
+         transition:width 0.4s ease;"></div>
+  </div>
+  <div style="text-align:right; font-size:11px; color:#aaa; margin-bottom:24px;">
+    <span id="progressText">0 of 10 answered &nbsp;·&nbsp; 0 में से 10 उत्तर दिए</span>
+  </div>
+
+  {% if error %}
+  <div class="alert alert-error" style="margin-bottom:20px;">
+    <span>⚠️</span><span>{{ error }}</span>
+  </div>
+  {% endif %}
+
+  <form method="POST" action="/assessment" onsubmit="return checkAllAnswered()">
+
+    <!-- Q1 -->
+    <div class="q-card" id="qcard1">
+      <div class="q-number">Question 1 of 10 &nbsp;·&nbsp; प्रश्न 1</div>
+      <div class="q-text">How regular are your menstrual cycles?</div>
+      <div class="q-hindi">आपके मासिक धर्म चक्र कितने नियमित हैं?</div>
+      <div class="select-wrapper">
+        <select name="q1" id="q1" required onchange="updateProgress()">
+          <option value="" disabled selected>Select / चुनें</option>
+          <option value="0">Never irregular / कभी अनियमित नहीं</option>
+          <option value="1">Sometimes / कभी-कभी</option>
+          <option value="2">Often / अक्सर</option>
+          <option value="3">Always irregular / हमेशा अनियमित</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="q-card" id="qcard2">
+      <div class="q-number">Question 2 of 10 &nbsp;·&nbsp; प्रश्न 2</div>
+      <div class="q-text">Do you experience severe abdominal cramps during your period?</div>
+      <div class="q-hindi">क्या आपको माहवारी के दौरान पेट में तेज दर्द होता है?</div>
+      <div class="select-wrapper">
+        <select name="q2" id="q2" required onchange="updateProgress()">
+          <option value="" disabled selected>Select / चुनें</option>
+          <option value="0">Never / कभी नहीं</option>
+          <option value="1">Sometimes / कभी-कभी</option>
+          <option value="2">Often / अक्सर</option>
+          <option value="3">Always / हमेशा</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="q-card" id="qcard3">
+      <div class="q-number">Question 3 of 10 &nbsp;·&nbsp; प्रश्न 3</div>
+      <div class="q-text">Do you feel excessive fatigue or weakness during your period?</div>
+      <div class="q-hindi">क्या आपको माहवारी के दौरान अत्यधिक थकान या कमज़ोरी महसूस होती है?</div>
+      <div class="select-wrapper">
+        <select name="q3" id="q3" required onchange="updateProgress()">
+          <option value="" disabled selected>Select / चुनें</option>
+          <option value="0">Never / कभी नहीं</option>
+          <option value="1">Sometimes / कभी-कभी</option>
+          <option value="2">Often / अक्सर</option>
+          <option value="3">Always / हमेशा</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Q4 -->
+    <div class="q-card" id="qcard4">
+      <div class="q-number">Question 4 of 10 &nbsp;·&nbsp; प्रश्न 4</div>
+      <div class="q-text">Do you experience strong mood swings before or during your period?</div>
+      <div class="q-hindi">क्या माहवारी से पहले या उसके दौरान आपके मूड में तेज़ बदलाव होता है?</div>
+      <div class="select-wrapper">
+        <select name="q4" id="q4" required onchange="updateProgress()">
+          <option value="" disabled selected>Select / चुनें</option>
+          <option value="0">Never / कभी नहीं</option>
+          <option value="1">Sometimes / कभी-कभी</option>
+          <option value="2">Often / अक्सर</option>
+          <option value="3">Always / हमेशा</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Q5 -->
+    <div class="q-card" id="qcard5">
+      <div class="q-number">Question 5 of 10 &nbsp;·&nbsp; प्रश्न 5</div>
+      <div class="q-text">Do you experience headaches or migraines around your menstrual cycle?</div>
+      <div class="q-hindi">क्या आपको मासिक चक्र के आसपास सिरदर्द या माइग्रेन होता है?</div>
+      <div class="select-wrapper">
+        <select name="q5" id="q5" required onchange="updateProgress()">
+          <option value="" disabled selected>Select / चुनें</option>
+          <option value="0">Never / कभी नहीं</option>
+          <option value="1">Sometimes / कभी-कभी</option>
+          <option value="2">Often / अक्सर</option>
+          <option value="3">Always / हमेशा</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Q6 -->
+    <div class="q-card" id="qcard6">
+      <div class="q-number">Question 6 of 10 &nbsp;·&nbsp; प्रश्न 6</div>
+      <div class="q-text">Do you experience heavy menstrual bleeding?</div>
+      <div class="q-hindi">क्या आपको माहवारी में अत्यधिक रक्तस्राव होता है?</div>
+      <div class="select-wrapper">
+        <select name="q6" id="q6" required onchange="updateProgress()">
+          <option value="" disabled selected>Select / चुनें</option>
+          <option value="0">Never / कभी नहीं</option>
+          <option value="1">Sometimes / कभी-कभी</option>
+          <option value="2">Often / अक्सर</option>
+          <option value="3">Always / हमेशा</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Q7 -->
+    <div class="q-card" id="qcard7">
+      <div class="q-number">Question 7 of 10 &nbsp;·&nbsp; प्रश्न 7</div>
+      <div class="q-text">Do you frequently feel bloated or have stomach discomfort before your period?</div>
+      <div class="q-hindi">क्या माहवारी से पहले आपको पेट फूलना या बेचैनी महसूस होती है?</div>
+      <div class="select-wrapper">
+        <select name="q7" id="q7" required onchange="updateProgress()">
+          <option value="" disabled selected>Select / चुनें</option>
+          <option value="0">Never / कभी नहीं</option>
+          <option value="1">Sometimes / कभी-कभी</option>
+          <option value="2">Often / अक्सर</option>
+          <option value="3">Always / हमेशा</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Q8 -->
+    <div class="q-card" id="qcard8">
+      <div class="q-number">Question 8 of 10 &nbsp;·&nbsp; प्रश्न 8</div>
+      <div class="q-text">Do you experience acne breakouts before your period?</div>
+      <div class="q-hindi">क्या माहवारी से पहले आपके चेहरे पर मुँहासे निकलते हैं?</div>
+      <div class="select-wrapper">
+        <select name="q8" id="q8" required onchange="updateProgress()">
+          <option value="" disabled selected>Select / चुनें</option>
+          <option value="0">Never / कभी नहीं</option>
+          <option value="1">Sometimes / कभी-कभी</option>
+          <option value="2">Often / अक्सर</option>
+          <option value="3">Always / हमेशा</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Q9 -->
+    <div class="q-card" id="qcard9">
+      <div class="q-number">Question 9 of 10 &nbsp;·&nbsp; प्रश्न 9</div>
+      <div class="q-text">Do you feel difficulty concentrating or studying during your period?</div>
+      <div class="q-hindi">क्या माहवारी के दौरान आपको ध्यान लगाने या पढ़ने में कठिनाई होती है?</div>
+      <div class="select-wrapper">
+        <select name="q9" id="q9" required onchange="updateProgress()">
+          <option value="" disabled selected>Select / चुनें</option>
+          <option value="0">Never / कभी नहीं</option>
+          <option value="1">Sometimes / कभी-कभी</option>
+          <option value="2">Often / अक्सर</option>
+          <option value="3">Always / हमेशा</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Q10 -->
+    <div class="q-card" id="qcard10">
+      <div class="q-number">Question 10 of 10 &nbsp;·&nbsp; प्रश्न 10</div>
+      <div class="q-text">Do your period symptoms affect your daily activities or school attendance?</div>
+      <div class="q-hindi">क्या माहवारी के लक्षण आपकी दैनिक गतिविधियों या स्कूल में उपस्थिति को प्रभावित करते हैं?</div>
+      <div class="select-wrapper">
+        <select name="q10" id="q10" required onchange="updateProgress()">
+          <option value="" disabled selected>Select / चुनें</option>
+          <option value="0">Never / कभी नहीं</option>
+          <option value="1">Sometimes / कभी-कभी</option>
+          <option value="2">Often / अक्सर</option>
+          <option value="3">Always / हमेशा</option>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Scoring key -->
+    <div style="background:#fff5f8; border:1.5px solid #f8bbd0; border-radius:14px;
+                padding:16px 22px; margin:20px 0;">
+      <div style="font-size:11px; font-weight:700; color:#c2185b; letter-spacing:1px;
+                  text-transform:uppercase; margin-bottom:10px; text-align:center;">
+        Scoring Key &nbsp;·&nbsp; अंक कुंजी
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:12px;">
+        <div style="background:#fff; border-radius:8px; padding:8px 12px; border:1px solid #fce4ec;">
+          <span style="color:#c2185b; font-weight:700;">0</span> — Never &nbsp;<span style="color:#aaa;">/ कभी नहीं</span>
+        </div>
+        <div style="background:#fff; border-radius:8px; padding:8px 12px; border:1px solid #fce4ec;">
+          <span style="color:#c2185b; font-weight:700;">1</span> — Sometimes &nbsp;<span style="color:#aaa;">/ कभी-कभी</span>
+        </div>
+        <div style="background:#fff; border-radius:8px; padding:8px 12px; border:1px solid #fce4ec;">
+          <span style="color:#c2185b; font-weight:700;">2</span> — Often &nbsp;<span style="color:#aaa;">/ अक्सर</span>
+        </div>
+        <div style="background:#fff; border-radius:8px; padding:8px 12px; border:1px solid #fce4ec;">
+          <span style="color:#c2185b; font-weight:700;">3</span> — Always &nbsp;<span style="color:#aaa;">/ हमेशा</span>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn-primary" id="submitBtn" style="margin-top:8px; width:100%;">
+      Submit Assessment &amp; Go to Dashboard → &nbsp;|&nbsp; डैशबोर्ड पर जाएं →
+    </button>
+
+  </form>
+
+  <div style="text-align:center; margin-top:20px; font-size:13px; color:#aaa;">
+    Already have an account? <a href="/login" style="color:#c2185b; font-weight:600;">Sign in</a>
+  </div>
+
+</div>
+
+<style>
+  .q-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 22px 26px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 12px rgba(194,24,91,0.07);
+    border-left: 4px solid #f48fb1;
+    transition: all 0.3s ease;
+  }
+  .q-card.answered {
+    border-left-color: #c2185b;
+    background: #fff8fb;
+  }
+  .q-number {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #f48fb1;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .q-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #2d2d2d;
+    margin-bottom: 5px;
+    line-height: 1.5;
+  }
+  .q-hindi {
+    font-size: 13px;
+    font-weight: 500;
+    color: #c2185b;
+    margin-bottom: 14px;
+    line-height: 1.5;
+    font-style: italic;
+  }
+  .select-wrapper {
+    position: relative;
+  }
+  .select-wrapper select {
+    width: 100%;
+    padding: 11px 36px 11px 16px;
+    border: 1.5px solid #e8e8e8;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: #2d2d2d;
+    background: #fff;
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  .select-wrapper select:focus {
+    border-color: #f48fb1;
+    box-shadow: 0 0 0 3px rgba(244,143,177,0.2);
+  }
+  .select-arrow {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: #aaa;
+    font-size: 14px;
+  }
+  .btn-primary.loading { opacity:.75; pointer-events:none; }
+</style>
+
+<script>
+  function updateProgress() {
+    var total    = 10;
+    var answered = 0;
+    for (var i = 1; i <= total; i++) {
+      var sel = document.getElementById('q' + i);
+      if (sel && sel.value !== '') {
+        answered++;
+        document.getElementById('qcard' + i).classList.add('answered');
+      }
+    }
+    var pct = (answered / total) * 100;
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressText').textContent =
+      answered + ' of ' + total + ' answered  ·  ' + answered + ' में से ' + total + ' उत्तर दिए';
+  }
+
+  function checkAllAnswered() {
+    for (var i = 1; i <= 10; i++) {
+      var sel = document.getElementById('q' + i);
+      if (!sel || sel.value === '') {
+        document.getElementById('qcard' + i).scrollIntoView({behavior:'smooth', block:'center'});
+        document.getElementById('qcard' + i).style.borderLeftColor = '#e53935';
+        alert('Please answer Question ' + i + ' before submitting.\nकृपया प्रश्न ' + i + ' का उत्तर दें।');
+        return false;
+      }
+    }
+    var btn = document.getElementById('submitBtn');
+    btn.textContent = 'Submitting… / जमा हो रहा है…';
+    btn.classList.add('loading');
+    return true;
+  }
+</script>
+
+</body>
+</html>

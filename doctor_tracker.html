@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Visit — GraceHealth</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">GraceHealth<span>Women's Health Platform</span></div>
+  <nav>
+    <a href="/dashboard" class="nav-link">← Dashboard</a>
+    <a href="/logout" class="nav-logout">Logout</a>
+  </nav>
+</header>
+
+<div class="form-page-wrap">
+  <div class="form-card">
+
+    <div class="form-card-header">
+      <div style="font-size:44px; margin-bottom:10px;">🏥</div>
+      <h2>Log a Doctor Visit</h2>
+      <p>Keep a record of your medical consultations for your health reports</p>
+    </div>
+
+    <form method="POST">
+
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>📅 Visit Date</label>
+          <input type="date" name="visit_date" required
+                 max=""
+                 style="cursor:pointer;">
+        </div>
+        <div class="form-group">
+          <label>📅 Next Appointment <span style="font-weight:400;color:#bbb;">(optional)</span></label>
+          <input type="date" name="next_appt" style="cursor:pointer;">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>🩺 Diagnosis / Doctor's Finding</label>
+        <input type="text" name="diagnosis" maxlength="300"
+               placeholder="e.g. Dysmenorrhea, PCOS, Iron deficiency…">
+      </div>
+
+      <div class="form-group">
+        <label>💊 Medication Prescribed <span style="font-weight:400;color:#bbb;">(optional)</span></label>
+        <input type="text" name="medication" maxlength="200"
+               placeholder="e.g. Mefenamic Acid 500mg, Iron supplement…">
+      </div>
+
+      <div class="form-group">
+        <label>📝 Additional Notes <span style="font-weight:400;color:#bbb;">(optional)</span></label>
+        <textarea name="notes" maxlength="300" rows="3"
+                  placeholder="Any additional notes from the consultation…"
+                  style="padding:12px 14px; border:1.5px solid #f0f0f0; border-radius:12px;
+                         font-size:14px; color:#2d2d2d; outline:none; resize:vertical;
+                         font-family:'DM Sans',sans-serif; transition:border .2s;"
+                  onfocus="this.style.borderColor='#f48fb1'"
+                  onblur="this.style.borderColor='#f0f0f0'"></textarea>
+      </div>
+
+      <div style="display:flex; gap:12px; margin-top:8px; flex-wrap:wrap;">
+        <button type="submit" class="btn-primary" style="flex:1; min-width:180px;">
+          💾 Save Visit Record
+        </button>
+        <a href="/dashboard" class="btn-secondary" style="flex:1; min-width:120px; text-align:center;">
+          Cancel
+        </a>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<style>
+  .form-page-wrap { max-width:580px; margin:40px auto 60px; padding:0 20px; }
+  .form-card { background:#fff; border-radius:20px; padding:36px 40px;
+               box-shadow:0 4px 30px rgba(194,24,91,.08); }
+  .form-card-header { text-align:center; margin-bottom:28px; }
+  .form-card-header h2 { font-family:'Playfair Display',serif; font-size:26px;
+                          color:#c2185b; margin-bottom:6px; }
+  .form-card-header p { font-size:14px; color:#aaa; }
+  .form-group { display:flex; flex-direction:column; gap:6px; margin-bottom:18px; }
+  .form-group label { font-size:12px; font-weight:600; color:#888;
+                       text-transform:uppercase; letter-spacing:.5px; }
+  .form-group input { padding:12px 14px; border:1.5px solid #f0f0f0; border-radius:12px;
+                       font-size:14px; color:#2d2d2d; outline:none; transition:border .2s;
+                       font-family:'DM Sans',sans-serif; }
+  .form-group input:focus { border-color:#f48fb1; box-shadow:0 0 0 3px rgba(244,143,177,.15); }
+  .form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .btn-primary { background:linear-gradient(135deg,#c2185b,#e91e8c); color:#fff;
+                  border:none; padding:14px 28px; border-radius:50px; font-size:14px;
+                  font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .3s; }
+  .btn-primary:hover { opacity:.85; }
+  .btn-secondary { background:#f5f5f5; color:#888; border:none; padding:14px 28px;
+                    border-radius:50px; font-size:14px; font-weight:600;
+                    text-decoration:none; display:inline-block; transition:all .3s;
+                    font-family:'DM Sans',sans-serif; }
+  .btn-secondary:hover { background:#eee; color:#555; }
+  @media(max-width:520px) {
+    .form-card { padding:24px 18px; }
+    .form-row-2 { grid-template-columns:1fr; }
+    .btn-primary, .btn-secondary { width:100%; text-align:center; }
+  }
+</style>
+
+<script>
+  // Set today as default visit date
+  var today = new Date().toISOString().split('T')[0];
+  document.querySelector('input[name="visit_date"]').value = today;
+  document.querySelector('input[name="visit_date"]').max   = today;
+</script>
+
+</body>
+</html>

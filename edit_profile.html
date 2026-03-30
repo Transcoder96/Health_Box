@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Profile — GraceHealth</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">GraceHealth<span>Women's Health Platform</span></div>
+  <nav>
+    <a href="/dashboard" class="nav-link">← Dashboard</a>
+    <a href="/logout" class="nav-logout">Logout</a>
+  </nav>
+</header>
+
+<div class="form-page-wrap">
+  <div class="form-card">
+
+    <div class="form-card-header">
+      <div style="font-size:40px; margin-bottom:10px;">
+        <img src="{{ avatar_url }}" alt="Your Avatar"
+             style="width:72px;height:72px;object-fit:contain;border-radius:50%;
+                    background:#fff0f6;padding:6px;border:2px solid #f8bbd0;"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+        <span style="display:none;font-size:48px;">👩</span>
+      </div>
+      <h2>Edit Profile</h2>
+      <p>Update your personal details or change your password</p>
+    </div>
+
+    {% if success %}
+    <div class="alert-success">✅ {{ success }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="alert-error">⚠️ {{ error }}</div>
+    {% endif %}
+
+    <form method="POST">
+
+      <div class="form-section-title">👤 Personal Details</div>
+
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" name="name" value="{{ user['name'] }}" required>
+      </div>
+
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>Age (years)</label>
+          <input type="number" name="age" value="{{ user['age'] }}" min="10" max="80" required>
+        </div>
+        <div class="form-group">
+          <label>Weight (kg)</label>
+          <input type="number" name="weight" value="{{ user['weight'] }}" min="20" max="200" step="0.1" required>
+        </div>
+        <div class="form-group">
+          <label>Height (cm)</label>
+          <input type="number" name="height" value="{{ user['height'] }}" min="50" max="220" step="0.1" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" value="{{ user['email'] }}" disabled
+               style="background:#f9f9f9; color:#aaa; cursor:not-allowed;">
+        <div style="font-size:11px; color:#bbb; margin-top:4px;">Email cannot be changed.</div>
+      </div>
+
+      <div class="form-divider"></div>
+      <div class="form-section-title">🔒 Change Password <span style="font-weight:400; font-size:12px; color:#aaa;">(leave blank to keep current)</span></div>
+
+      <div class="form-group">
+        <label>Current Password</label>
+        <div class="input-eye-wrap">
+          <input type="password" name="current_password" id="curr_pw" placeholder="Enter current password">
+          <button type="button" class="eye-btn" onclick="toggleEye('curr_pw', this)">👁</button>
+        </div>
+      </div>
+
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>New Password</label>
+          <div class="input-eye-wrap">
+            <input type="password" name="new_password" id="new_pw"
+                   placeholder="Min 6 characters" oninput="checkPwMatch()">
+            <button type="button" class="eye-btn" onclick="toggleEye('new_pw', this)">👁</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Confirm New Password</label>
+          <div class="input-eye-wrap">
+            <input type="password" name="confirm_password" id="conf_pw"
+                   placeholder="Repeat new password" oninput="checkPwMatch()">
+            <button type="button" class="eye-btn" onclick="toggleEye('conf_pw', this)">👁</button>
+          </div>
+          <div id="pwMatch" style="font-size:11px; margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">
+        <button type="submit" class="btn-primary" style="flex:1; min-width:180px;">
+          💾 Save Changes
+        </button>
+        <a href="/dashboard" class="btn-secondary" style="flex:1; min-width:140px; text-align:center;">
+          Cancel
+        </a>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<style>
+  .form-page-wrap { max-width:620px; margin:40px auto 60px; padding:0 20px; }
+  .form-card { background:#fff; border-radius:20px; padding:36px 40px;
+               box-shadow:0 4px 30px rgba(194,24,91,.08); }
+  .form-card-header { text-align:center; margin-bottom:28px; }
+  .form-card-header h2 { font-family:'Playfair Display',serif; font-size:26px;
+                          color:#c2185b; margin-bottom:6px; }
+  .form-card-header p { font-size:14px; color:#aaa; }
+  .form-section-title { font-size:12px; font-weight:700; color:#c2185b;
+                         text-transform:uppercase; letter-spacing:1px; margin-bottom:16px; }
+  .form-divider { border:none; border-top:1.5px solid #fce4ec; margin:24px 0 20px; }
+  .form-group { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+  .form-group label { font-size:12px; font-weight:600; color:#888; text-transform:uppercase;
+                       letter-spacing:.5px; }
+  .form-group input { padding:12px 14px; border:1.5px solid #f0f0f0; border-radius:12px;
+                       font-size:14px; color:#2d2d2d; outline:none; transition:border .2s;
+                       font-family:'DM Sans',sans-serif; }
+  .form-group input:focus { border-color:#f48fb1; box-shadow:0 0 0 3px rgba(244,143,177,.15); }
+  .form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  .form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .input-eye-wrap { position:relative; }
+  .input-eye-wrap input { width:100%; box-sizing:border-box; padding-right:40px; }
+  .eye-btn { position:absolute; right:10px; top:50%; transform:translateY(-50%);
+              background:none; border:none; cursor:pointer; font-size:15px; color:#bbb;
+              padding:0; line-height:1; transition:color .2s; }
+  .eye-btn:hover { color:#c2185b; }
+  .btn-primary { background:linear-gradient(135deg,#c2185b,#e91e8c); color:#fff;
+                  border:none; padding:14px 28px; border-radius:50px; font-size:14px;
+                  font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif;
+                  transition:all .3s; }
+  .btn-primary:hover { opacity:.85; }
+  .btn-secondary { background:#f5f5f5; color:#888; border:none; padding:14px 28px;
+                    border-radius:50px; font-size:14px; font-weight:600;
+                    text-decoration:none; display:inline-block; transition:all .3s;
+                    font-family:'DM Sans',sans-serif; }
+  .btn-secondary:hover { background:#eee; color:#555; }
+  .alert-success { background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7;
+                    border-radius:12px; padding:12px 16px; font-size:13px;
+                    margin-bottom:20px; font-weight:500; }
+  .alert-error { background:#fdecea; color:#b71c1c; border:1px solid #ef9a9a;
+                  border-radius:12px; padding:12px 16px; font-size:13px;
+                  margin-bottom:20px; font-weight:500; }
+
+  @media(max-width:600px) {
+    .form-card { padding:24px 20px; }
+    .form-row-3 { grid-template-columns:1fr; }
+    .form-row-2 { grid-template-columns:1fr; }
+    .btn-primary, .btn-secondary { width:100%; text-align:center; }
+  }
+</style>
+
+<script>
+  function toggleEye(inputId, btn) {
+    var inp = document.getElementById(inputId);
+    if(inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+    else { inp.type = 'password'; btn.textContent = '👁'; }
+  }
+  function checkPwMatch() {
+    var nw = document.getElementById('new_pw').value;
+    var cf = document.getElementById('conf_pw').value;
+    var el = document.getElementById('pwMatch');
+    if(!cf) { el.textContent = ''; return; }
+    if(nw === cf) { el.textContent = '✅ Passwords match'; el.style.color = '#2e7d32'; }
+    else          { el.textContent = '❌ Passwords do not match'; el.style.color = '#b71c1c'; }
+  }
+</script>
+
+</body>
+</html>
